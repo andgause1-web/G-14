@@ -67,14 +67,18 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
-  yaw: 0, pitch: 0, roll: 0, autoSway: true,
+  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
+
+export const stepCloser = (c) => ({ ...c, distance: Math.max(0, Math.ceil(c.distance / c.interval) * c.interval - c.interval) });
+export const stepBack = (c) => ({ ...c, distance: Math.min(100, Math.floor(c.distance / c.interval) * c.interval + c.interval) });
 
 function buildEntity(e, c, lead, t) {
   const T = ENTITY_TYPES[e.type];
   const jitter = e.type === "pygmy" ? Math.sin(t * 2.3 + e.offset * 3) * 0.35 : e.type === "wraith" ? Math.sin(t * 0.4) * 0.15 : 0;
-  const d = e.fixed ?? clamp(lead + e.offset + (e.type === "pygmy" ? Math.sin(t * 1.7 + e.offset) * 0.8 : 0), 3, 95);
+  const d0 = e.fixed ?? clamp(lead + e.offset, 3, 95);
+  const d = e.fixed ?? clamp(d0 + (e.type === "pygmy" ? Math.sin(t * 1.7 + e.offset) * 0.8 : 0), 3, 95);
   const lane = e.lane + jitter;
   const prox = 1 - d / CORRIDOR_LENGTH;
   let threat = T.base * (0.4 + 0.6 * prox);
@@ -98,7 +102,7 @@ function buildEntity(e, c, lead, t) {
     class: T.cls,
     type: e.type,
     name: T.name,
-    stage: e.type === "boss" ? "OBSERVED" : stageOf(d),
+    stage: e.type === "boss" ? "OBSERVED" : stageOf(d0),
     disposition,
     countered,
     bearing_deg: r((Math.atan2(lane, d) * 180) / Math.PI, 2),
@@ -113,10 +117,17 @@ export function makeCorridorSim() {
   let lead = DEFAULT_CORRIDOR.distance;
   let last = null;
   let observe = 0;
+  let resetKey = 0;
   return (c, t, seq) => {
     const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
     last = t;
+    if (c.resetKey !== resetKey) {
+      resetKey = c.resetKey;
+      lead = c.distance;
+      observe = 0;
+    }
     lead += (c.distance - lead) * Math.min(1, dt * 1.6);
+    if (Math.abs(c.distance - lead) < 0.3) lead = c.distance;
 
     const imu = headMotion(c, t);
     const entities = ROSTER.filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t));
@@ -132,7 +143,7 @@ export function makeCorridorSim() {
     const load = clamp(0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15);
     const stability = clamp((c.filter ? 0.92 : 0.35) - 0.55 * proxN * (1.2 - comp));
 
-    if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 4);
+    if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 1.5);
 
     return {
       schema: "g14.hud.v1",

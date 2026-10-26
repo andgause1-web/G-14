@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
-import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND } from "@/lib/corridor";
+import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser } from "@/lib/corridor";
 import { useSimulation } from "@/hooks/useSimulation";
 import { VisorFrame } from "@/components/hud/VisorFrame";
 import { CorridorBackground, CorridorEntityLayer } from "@/components/corridor/CorridorScene";
@@ -9,18 +9,24 @@ import { LissajousReticle } from "@/components/hud/LissajousReticle";
 import { StasisMeter } from "@/components/hud/StasisMeter";
 import { DynamicCompass } from "@/components/hud/DynamicCompass";
 import { RadarPanel, TargetReadout, StatusRail, LoadoutPanel } from "@/components/hud/Panels";
-import { HallwayPanel, stepCloser } from "@/components/panels/HallwayPanel";
+import { HallwayPanel } from "@/components/panels/HallwayPanel";
 import { DataFeed } from "@/components/panels/DataFeed";
 import { TopBar } from "@/components/TopBar";
 
 const STEP_MS = 3500;
 
-function useEventLog(frame, interval) {
+function useEventLog(frame, interval, resetKey) {
   const [events, setEvents] = useState([]);
-  const prev = useRef({ stages: {}, checkpoint: null, filter: null, seq: 0 });
+  const prev = useRef({ stages: {}, checkpoint: null, filter: null, seq: 0, resetKey });
   useEffect(() => {
     const p = prev.current;
+    if (p.resetKey !== resetKey) {
+      Object.assign(p, { stages: {}, checkpoint: null, filter: null, resetKey });
+      setEvents([]);
+      return;
+    }
     const add = [];
+    const firstPygmy = frame.scan.entities.find((e) => e.type === "pygmy")?.id;
     const cp = Math.ceil(frame.lead_m / interval - 0.02) * interval;
     if (p.checkpoint !== null && cp < p.checkpoint) add.push({ text: `CHECKPOINT ${cp} m REACHED`, tone: "info" });
     p.checkpoint = cp;
@@ -31,7 +37,7 @@ function useEventLog(frame, interval) {
     frame.scan.entities.forEach((e) => {
       const key = `${e.stage}|${e.disposition}|${e.countered}`;
       const old = p.stages[e.id];
-      if (old && old !== key && (e.type !== "pygmy" || e.id === "P-01")) {
+      if (old && old !== key && (e.type !== "pygmy" || e.id === firstPygmy)) {
         const T = ENTITY_TYPES[e.type];
         const note = e.countered ? ` · ${T.counterOn}` : e.type === "gnome" ? ` · ${e.disposition}` : "";
         add.push({ text: `${e.id} ${T.name} → ${e.stage}${note}`, tone: e.stage === "PROXIMITY" || e.disposition === "HOSTILE" && e.type === "gnome" ? "alert" : e.countered ? "good" : "info" });
@@ -41,8 +47,8 @@ function useEventLog(frame, interval) {
     if (add.length) {
       setEvents((ev) => [...add.map((a) => ({ ...a, d: frame.lead_m, k: ++p.seq })).reverse(), ...ev].slice(0, 6));
     }
-  }, [frame, interval]);
-  return [events, setEvents];
+  }, [frame, interval, resetKey]);
+  return events;
 }
 
 export default function HallwayPage() {
@@ -52,7 +58,7 @@ export default function HallwayPage() {
   const [streaming, setStreaming] = useState(false);
   const builder = useMemo(makeCorridorSim, []);
   const { frame, frameRef, streamStatus } = useSimulation(controls, streaming, builder);
-  const [events, setEvents] = useEventLog(frame, controls.interval);
+  const events = useEventLog(frame, controls.interval, controls.resetKey);
   const view = DEFAULT_VIEW;
 
   useEffect(() => {
@@ -67,9 +73,8 @@ export default function HallwayPage() {
 
   const onReset = useCallback(() => {
     setPlaying(false);
-    setControls((c) => ({ ...c, distance: 100 }));
-    setEvents([]);
-  }, [setEvents]);
+    setControls((c) => ({ ...c, distance: 100, resetKey: c.resetKey + 1 }));
+  }, []);
   const closePanel = useCallback(() => setPanel(null), []);
 
   const tier = frame.hud.throttle_tier;

@@ -1,13 +1,9 @@
 import { memo } from "react";
 import { X, ChevronsDown, ChevronsUp, Play, Pause, RotateCcw } from "lucide-react";
 import { SliderRow, ToggleRow } from "@/components/panels/SensorPanel";
-import { ENTITY_TYPES } from "@/lib/corridor";
+import { ENTITY_TYPES, stepCloser, stepBack } from "@/lib/corridor";
 
 const MOODS = ["NEUTRAL", "SUBMITTED", "HOSTILE"];
-
-const stepCloser = (c) => ({ ...c, distance: Math.max(0, Math.ceil(c.distance / c.interval) * c.interval - c.interval) });
-const stepBack = (c) => ({ ...c, distance: Math.min(100, Math.floor(c.distance / c.interval) * c.interval + c.interval) });
-export { stepCloser };
 
 export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset }) => {
   const set = (k, v) => setControls((c) => ({ ...c, [k]: v }));

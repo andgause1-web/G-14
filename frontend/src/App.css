@@ -214,7 +214,7 @@
 .visor-hint b { color: var(--gold); font-weight: 400; }
 
 /* ---------- drawers ---------- */
-.drawer { position: fixed; top: 0; bottom: 0; z-index: 40; width: 380px; max-width: 92vw; display: flex; flex-direction: column; background: rgba(5, 9, 15, 0.9); backdrop-filter: blur(18px); transition: transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.drawer { position: fixed; top: 48px; bottom: 0; z-index: 40; width: 380px; max-width: 92vw; display: flex; flex-direction: column; background: rgba(5, 9, 15, 0.9); backdrop-filter: blur(18px); transition: transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1); }
 .drawer-right { right: 0; border-left: 1px solid rgba(0, 240, 255, 0.25); transform: translateX(102%); }
 .drawer-left { left: 0; border-right: 1px solid rgba(0, 240, 255, 0.25); transform: translateX(-102%); width: 420px; }
 .drawer.open { transform: translateX(0); }
@@ -308,7 +308,7 @@
 .callout-layer { position: absolute; inset: 0; z-index: 6; pointer-events: none; transform-origin: 50% 50%; }
 .callout-lines { position: absolute; inset: 0; overflow: visible; }
 .callout-lines polyline { fill: none; stroke-width: 1; opacity: 0.6; }
-.cor-label { position: absolute; width: 210px; padding: 5px 8px; font-size: 9px; letter-spacing: 0.1em; line-height: 1.55; color: #dff9ff; background: rgba(2, 6, 10, 0.6); border-left: 2px solid var(--ent); backdrop-filter: blur(4px); white-space: normal; transition: top 160ms ease-out; }
+.cor-label { position: absolute; width: 210px; padding: 5px 8px; font-size: 9px; letter-spacing: 0.1em; line-height: 1.55; color: #dff9ff; background: rgba(2, 6, 10, 0.6); border-left: 2px solid var(--ent); backdrop-filter: blur(4px); white-space: normal; transition: top 80ms linear; }
 .cor-label.side-L { border-left: none; border-right: 2px solid var(--ent); text-align: right; }
 .cor-label.side-L .cl-id { flex-direction: row-reverse; }
 .cor-label.side-T { text-align: center; border-left: none; border-top: 2px solid var(--ent); width: 230px; }
@@ -332,8 +332,8 @@
 .slot-events { top: 42%; left: 6.5%; animation-delay: 350ms; }
 .event-log { width: 236px; padding: 7px 9px; }
 .event-log .panel-head { font-size: 10px; margin-bottom: 4px; }
-.ev-row { display: grid; grid-template-columns: 34px 1fr; gap: 6px; font-size: 8px; letter-spacing: 0.06em; line-height: 1.5; color: rgba(207, 239, 255, 0.75); animation: boot-in 400ms ease both; }
-.ev-d { color: rgba(126, 243, 255, 0.5); }
+.ev-row { display: grid; grid-template-columns: 34px 1fr; gap: 6px; font-size: 9px; letter-spacing: 0.06em; line-height: 1.5; color: #d6f4ff; animation: boot-in 400ms ease both; }
+.ev-d { color: rgba(126, 243, 255, 0.7); }
 .ev-alert { color: var(--red); }
 .ev-good { color: var(--green); }
 

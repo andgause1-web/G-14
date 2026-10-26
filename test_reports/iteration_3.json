@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only test of the new /hallway asylum corridor page at 1920x1080, plus regression checks on / and /unreal. All 11 requested feature areas work with no page errors. The route loads through nav-hallway-link with the background, entity and callout layers, compass, stasis, event log, radar, reticle, target readout, loadout and progress bar; LEAD shows 100 m. At 100 m all 8 non-boss entities are DETECTED and B-00 is OBSERVED. The panel opens with class 'open'. Interval buttons work: 20 m goes 100->80, 10 m goes 80->70, BACK returns to 80. Lead distance tweens toward the target (88 m after 0.8 s, 81 m after 3.3 s). Stages move correctly through CLASSIFYING (60), IDENTIFIED (40), TRACKING (20) and PROXIMITY (0), and the event log adds CHECKPOINT and '<id> <NAME> -> <STAGE>' rows. AUTO switches to PAUSE, steps every ~3.5 s, stops at 0 and switches back to AUTO. Reset sets the slider to 100 and clears the log. Turning the observer filter off shows raw-feed-warning, gives all entities the is-raw class and raises cognitive load (0.48 -> 0.57); turning it on removes the warning. Wolf-tone shows PATTERN DISRUPTED on G-01 (threat 0.58 -> 0.23); the thermal loop shows HEAT SIGNATURE MASKED on W-01 (threat 0.43 -> 0.15). The gnome buttons change STATE to NEUTRAL/SUBMITTED/HOSTILE, and HOSTILE shows TAMPERING WITH SUIT with threat 0.58. Boss observation rises with sway off and yaw 0 (6% -> 12% in 3 s) and freezes at yaw 30 and when the filter is off. All 5 entity toggles remove their entities and labels and can be turned back on. The data feed JSON has scene asylum_corridor, lead_m and type/stage/disposition per entity. The stream toggle shows STREAMING and the LIVE pill, then OFFLINE. Regression: '/' loads and /unreal lists the kit files; G14HudTypes.h has the Type/Stage/Disposition fields and the receiver parses them. Several minor logic and UX issues were found (see action items).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HallwayPanel / TopBar", "issue": "When the CORRIDOR drawer is open it covers the top-bar DATA FEED and CORRIDOR buttons, so clicks are intercepted by the hallway-panel drawer-head. The user must close the drawer before opening the data feed or toggling the panel from the top bar.", "selector": "[data-testid=open-data-feed-button]", "priority": "MEDIUM"},
+      {"component": "CorridorScene callout layout", "issue": "layoutCallouts uses fixed LABEL_H heights per stage and ignores the extra lines added for a countermeasure, a hostile gnome or a tactic. Stacked labels overlap, hiding 'PATTERN DISRUPTED', 'HEAT SIGNATURE MASKED' and 'TAMPERING WITH SUIT — REASSERT COMMAND' under the next label (seen at 40 m with countermeasures and HOSTILE on).", "selector": "[data-testid^=corridor-label-]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Event log checkpoints", "issue": "The lead tween is exponential (lead += (target-lead)*dt*1.6) and never quite reaches the target: it settles at 81/61/41/22/1 m. A checkpoint is only logged when ceil(lead/interval - 0.02) drops, so 'CHECKPOINT 60 m REACHED' appears only after the NEXT step starts (logged at 57 m). With manual stepping, each checkpoint is effectively logged one step late.", "affected_selectors": ["[data-testid=corridor-event-log]", "[data-testid=corridor-lead-distance]"]},
+      {"flow": "Event log spam", "issue": "P-01 distance jitters by ±0.8 m (sin(t*1.7)). When the lead sits near a threshold (e.g. 40 -> d≈40-41), P-01 flips IDENTIFIED/TRACKING repeatedly and fills the 6-row log, pushing out useful events such as countermeasure and checkpoint rows. Hysteresis is needed on stage changes.", "affected_selectors": ["[data-testid=corridor-event-log]"]},
+      {"flow": "Reset", "issue": "Reset clears the log, but as the lead tweens back 0->100 the log immediately refills with backward transitions ('-> DETECTED', etc.). Reset also does not reset boss observation (14% stayed after reset) or countermeasure/gnome state. Possibly intentional, but it feels inconsistent.", "affected_selectors": ["[data-testid=corridor-reset-button]", "[data-testid=boss-observation]"]},
+      {"flow": "Observer filter off", "issue": "With the filter off, the panel hint says 'Signatures stay unresolved', but the labels still show fully resolved names, aliases and Steiner text (PAPERCLIP GOLEM, MACHINE GNOME, etc.). Only the images switch to is-raw. LabelBody does not check hud.observer_filter.", "affected_selectors": ["[data-testid^=corridor-label-]"]}
+    ],
+    "design_issues": [
+      {"screen": "Hallway 1920x1080", "issues": ["At lead 0 the nearest pygmy overlay grows very large and covers the HUD centre and the corridor progress bar (z-index of entity-layer vs hud progress)", "Event log rows are tiny and low contrast (the gray 'info' tone on a dark panel is barely legible)", "Boss observation accumulates fast (~2%/s with natural sway), so it reads TRANSMUTATION READY within ~50 s of idle time"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Offset drawer-right/left top (or raise the topbar z-index) so the top-bar DATA FEED/CORRIDOR buttons stay clickable while a drawer is open",
+    "Make the callout layout measure actual label heights (or add height for counter/tactic/hostile lines) to stop labels overlapping",
+    "Log checkpoints when the target distance is reached (or snap the lead when |target-lead| < 0.5) so checkpoint events are not one step late",
+    "Add hysteresis to stage transitions or ignore pygmy jitter for stage events to stop event log spam",
+    "When observer_filter is false, show 'UNRESOLVED SIGNATURE' style labels to match the panel hint",
+    "Consider resetting boss observation on corridor reset and suppressing backward-transition events during the reset tween"
+  ],
+  "critical_code_review_comments": [
+    "HallwayPage useEventLog runs on every frame (~frame rate) and calls setEvents only when there are changes, which is OK. However, the logic that decides which entities get logged (e.type !== 'pygmy' || e.id === 'P-01') is hardcoded to the 'P-01' id; if pygmies are toggled, the first pygmy id may differ from CorridorEntityLayer's firstPygmy",
+    "corridor.js: makeCorridorSim keeps `observe` in a closure with no reset path; expose a reset or derive it from controls",
+    "CorridorScene reads window.innerWidth/innerHeight during render with no resize listener, so it only updates on the next frame. That is fine given the continuous frame updates, but should be noted",
+    "HallwayPanel exports stepCloser from the component file; move it to lib/corridor.js for cohesion"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested features functional; 6 minor logic/UX issues"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "On /hallway, hallway-panel covers the top-bar buttons when open: close it with hallway-panel-close-button before clicking open-data-feed-button. data-feed-json is always in the DOM and can be read even when the drawer is closed. Radix sliders: focus [data-testid=slider-yaw] [role=slider] and use Home/End/Arrow keys. Allow ~4 s per 20 m step for the lead tween. The Unreal kit has 9 files under backend/unreal_kit."
+}

@@ -19,6 +19,14 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Unreal Kit page: file viewer, copy/download, zip, endpoints, schema table
 - Tested: iteration_1 all pass
 
+## Hallway page (/hallway) — added 2026-06
+- 100 m asylum corridor, player stationary, entities approach in 10/20 m steps (manual, slider, or auto every 3.5 s)
+- Stages by distance: DETECTED >80, CLASSIFYING >60, IDENTIFIED >40, TRACKING >20, PROXIMITY
+- Observer filter: generated original necromorph-style overlays (screen-blended); off = raw/unresolved feed + load spike
+- Entities: Moon Pygmy swarm ×4, Venus Wraith (Peltier counter), Paperclip Golem (528 Hz counter), Machine Gnomes ×2 (NEUTRAL/SUBMITTED/HOSTILE), stationary boss The Composite at 97 m with observation % → transmutation ready
+- Callout labels in measured, non-overlapping columns with leader lines; event log; corridor progress bar; frames streamed with scene/type/stage/disposition (Unreal kit types updated)
+- Tested: iteration_3 pass + fixes (drawer under top bar, label overlap, checkpoint timing, stage hysteresis, reset, filter-off labels)
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data

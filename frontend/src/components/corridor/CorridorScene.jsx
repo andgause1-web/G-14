@@ -40,6 +40,7 @@ function project(e, imu, W, H) {
 }
 
 const LabelBody = ({ e, T, frame }) => {
+  if (!frame.hud.observer_filter && e.type !== "boss") return <div className="cl-raw">UNFILTERED SIGNATURE · {Math.round(e.distance_m)} m · RAW</div>;
   if (e.stage === "DETECTED") return <div className="cl-raw">UNRESOLVED SIGNATURE · {Math.round(e.distance_m)} m</div>;
   if (e.stage === "CLASSIFYING") {
     const pct = Math.round(((80 - e.distance_m) / 20) * 100);
@@ -76,7 +77,7 @@ const CorridorEntity = ({ e, frame, W, H }) => {
   const T = ENTITY_TYPES[e.type];
   const { x, feet, h } = project(e, frame.imu, W, H);
   const raw = !frame.hud.observer_filter || e.stage === "DETECTED" || e.stage === "CLASSIFYING";
-  const size = Math.max(h, 6);
+  const size = Math.min(Math.max(h, 6), H * 0.7);
   return (
     <div
       className={`cor-ent t-${e.type} st-${e.stage.toLowerCase()} ${raw ? "is-raw" : "is-filtered"} ${e.disposition === "HOSTILE" ? "is-hostile" : ""}`}
@@ -91,28 +92,41 @@ const CorridorEntity = ({ e, frame, W, H }) => {
   );
 };
 
-const LABEL_H = { DETECTED: 34, CLASSIFYING: 56, IDENTIFIED: 74, TRACKING: 70, PROXIMITY: 70, OBSERVED: 96 };
+function labelHeight(e, filter) {
+  if (e.type === "boss") return 96;
+  if (!filter || e.stage === "DETECTED") return 34;
+  if (e.stage === "CLASSIFYING") return 56;
+  const close = e.stage === "TRACKING" || e.stage === "PROXIMITY";
+  let h = 50;
+  if (e.stage === "IDENTIFIED") h += 26;
+  if (e.countered) h += 15;
+  if (e.type === "gnome") h += e.disposition === "HOSTILE" ? 28 : 15;
+  else if (close && !e.countered) h += 28;
+  return h;
+}
 const GAP = 150;
 
-function layoutCallouts(items, W, H) {
+function layoutCallouts(items, W, H, filter, measured) {
   const out = [];
   ["L", "R"].forEach((side) => {
-    let y = H * 0.22;
-    items
-      .filter((i) => i.side === side)
-      .sort((a, b) => a.ay - b.ay)
-      .forEach((i) => {
-        const top = Math.max(y, i.ay - 24);
+    const col = items.filter((i) => i.side === side).sort((a, b) => b.e.distance_m - a.e.distance_m || a.e.id.localeCompare(b.e.id));
+    const hOf = (i) => (measured[i.e.id] ?? labelHeight(i.e, filter)) + 8;
+    const total = col.reduce((s, i) => s + hOf(i), 0);
+    let y = Math.max(H * 0.2, Math.min(col[0] ? col[0].ay - 24 : 0, H * 0.8 - total));
+    let remaining = total;
+    col.forEach((i) => {
+        const top = Math.max(y, Math.min(i.ay - 24, H * 0.8 - remaining));
+        remaining -= hOf(i);
         const lx = side === "R" ? Math.max(W / 2 + GAP, i.ax + i.size / 2 + 18) : Math.min(W / 2 - GAP, i.ax - i.size / 2 - 18);
         out.push({ ...i, top, lx });
-        y = top + LABEL_H[i.e.stage] + 10;
+        y = top + hOf(i);
       });
   });
-  items.filter((i) => i.side === "T").forEach((i) => out.push({ ...i, top: i.ay - i.size * 0.55 - LABEL_H.OBSERVED, lx: i.ax }));
+  items.filter((i) => i.side === "T").forEach((i) => out.push({ ...i, top: i.ay - i.size * 0.55 - 96, lx: i.ax }));
   return out;
 }
 
-const Callouts = ({ items, frame }) => (
+const Callouts = ({ items, frame, measured }) => (
   <>
     <svg className="callout-lines" width="100%" height="100%">
       {items.filter((i) => i.side !== "T").map((i) => (
@@ -123,7 +137,7 @@ const Callouts = ({ items, frame }) => (
       const T = ENTITY_TYPES[e.type];
       const pos = side === "R" ? { left: lx } : side === "L" ? { right: window.innerWidth - lx } : { left: lx, transform: "translateX(-50%)" };
       return (
-        <div key={e.id} className={`cor-label side-${side} st-${e.stage.toLowerCase()}`} style={{ ...pos, top, "--ent": T.color }} data-testid={`corridor-label-${e.id}`}>
+        <div key={e.id} ref={(el) => { if (el) measured[e.id] = el.offsetHeight; }} className={`cor-label side-${side} st-${e.stage.toLowerCase()}`} style={{ ...pos, top, "--ent": T.color }} data-testid={`corridor-label-${e.id}`}>
           <div className="cl-id">{e.id}{swarm > 1 ? ` · SWARM ×${swarm}` : ""} <span className="cl-stage">{e.stage}</span></div>
           <LabelBody e={e} T={T} frame={frame} />
         </div>
@@ -133,6 +147,7 @@ const Callouts = ({ items, frame }) => (
 );
 
 export const CorridorEntityLayer = ({ frame, tier }) => {
+  const measured = useRef({});
   const W = window.innerWidth;
   const H = window.innerHeight;
   const ents = frame.scan.entities;
@@ -144,7 +159,7 @@ export const CorridorEntityLayer = ({ frame, tier }) => {
   });
   const items = labelled.map((e) => {
     const { x, feet, h } = project(e, frame.imu, W, H);
-    const size = Math.max(h, 6);
+    const size = Math.min(Math.max(h, 6), H * 0.7);
     const side = e.type === "boss" ? "T" : e.lane_m < 0 ? "L" : "R";
     return { e, ax: x, ay: feet - size * 0.55, size, side, swarm: e.id === firstPygmy ? swarm : 0 };
   });
@@ -155,7 +170,7 @@ export const CorridorEntityLayer = ({ frame, tier }) => {
         {ents.map((e) => <CorridorEntity key={e.id} e={e} frame={frame} W={W} H={H} />)}
       </div>
       <div className="callout-layer" style={rot} data-testid="corridor-callout-layer">
-        <Callouts items={layoutCallouts(items, W, H)} frame={frame} />
+        <Callouts items={layoutCallouts(items, W, H, frame.hud.observer_filter, measured.current)} frame={frame} measured={measured.current} />
       </div>
     </>
   );
