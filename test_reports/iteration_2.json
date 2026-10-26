@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only test of crosshair styles, opacity slider, loadout panel, operator portrait + quick regression at 1920x900 and 1920x1080. All pass, no page errors. Crosshair defaults to 'cross' (data-crosshair=cross, opacity 0.9); dot/circle/cross buttons switch the data-crosshair attribute and the active button gets the active-cross class. Opacity slider has aria min 10, max 100, default 90; 50 gives value 50 and style opacity 0.5, Home gives 10/0.1, End gives 100/1. The reticle canvas is 220px, close in size to the stasis meter (190x188) and radar (212x176). hud-loadout sits below hud-target-readout and shows slots 1-4: PRIMARY UNASSIGNED (active), SECONDARY UNASSIGNED, EQUIP A EMPTY, EQUIP B EMPTY. With toggle-layer-reticle off, slot-reticle and slot-target are removed and the loadout stays visible. The operator portrait image loads (naturalWidth 1024), the callsign reads AETHER-01, the stasis-index-value overlay shows a number and the brain icon is gone. Presets: calm gives 2 contacts, SCANNING, no throttle, STABLE. Combat gives 4 contacts, TARGET LOCK, throttle shown, DRIFTING with correct JP label. Overload gives 5 contacts, TARGET LOCK, throttle shown, UNSTABLE. Streaming works: backend status showed publishers=1 and frames increasing. The Unreal page loads with its file list and code viewer. Layout at 1920x900: the RIG rail spans y 165-428 and the target readout starts at y 485, with the loadout ending at y 732, so they do not overlap vertically. Both panels stay inside the visor's bottom-right curve.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Visor 1920x900", "issues": ["Loadout panel ends close to the visor's bottom-right curved edge (~70px margin); on shorter viewports it may clip - not tested below 900px height", "In overload, the OBSERVER THROTTLE T2 badge next to the RIG rail visually sits near/behind entity E-04 label (entity labels can overlap HUD rail - cosmetic)", "Loadout slot names (UNASSIGNED/EMPTY) are very low contrast/tiny - intentional placeholder but barely legible"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_g14_hud_api.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Panels.jsx: import statements for CymaticRadar/CompassRose appear after the LoadoutPanel export (line ~27) - works due to hoisting but should be moved to file top for readability",
+    "VisorPage.jsx: slot-target uses conditional render for the readout while the loadout always renders - fine, but the loadout is not controlled by any layer toggle (consider adding one)",
+    "LissajousReticle: crosshair prop is read inside the canvas loop closure; it works (attribute and redraw verified) but depends on useCanvasLoop picking up the latest draw callback"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Radix slider: focus [data-testid=slider-crosshairOpacity] [role=slider] and use Arrow/Home/End keys. The stream switch testid is stream-toggle. The Unreal file list does not use the unreal-file-* testid prefix (the list rendered fine visually). Mobile and tablet were not tested."
+}
