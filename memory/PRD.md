@@ -40,6 +40,14 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Gaze reveal: slider or mouse; left = vitals ring + radar + zone, right = telemetry column + progress; fade 450 ms
 - Tested: iteration_5 all pass
 
+## Observer Throttle priority system + Baseline — added 2026-06
+- Hallway default mode THROTTLE (Ghost + Analyst still selectable); load auto or manual slider
+- Tiers T0–T3 per user spec with 300 ms fades; contact score = threat × 1/d × approach bonus; top card w/ leader line, tags for others; 20% hysteresis on top card
+- Centre clear zone (25% width, +16 px margin), card→tag collapse on overlap, ≤3 labels per screen third
+- Stasis passive unless drift/gaze; inertial panel lag (~100 ms); T3 soft red visor-arc pulse + direction arrow
+- /baseline tab: 60 s (or fast 6 s) EM/thermal/IMU recording → localStorage g14.baseline; HUD chip BASELINE STABLE / DEVIATION +X% (4σ & ≥5%)
+- Tested: iteration_6 + fixes (baseline flicker, clear-zone margin, card hysteresis, region counting, zone badge hidden T1+)
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data

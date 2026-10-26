@@ -147,7 +147,7 @@ export default function HallwayPage() {
         {calm && <div className="hud-slot slot-breath"><BreathPacer /></div>}
         <div className="hud-slot slot-progress gaze-fade" style={{ opacity: ghost ? Math.max(gR, level >= 2 ? 0.5 : 0.06) : 1 }}><CorridorProgress frame={frame} interval={controls.interval} /></div>
         </>)}
-        <div className="zone-badge gaze-fade" style={{ opacity: ghost ? Math.max(gL, 0.12) : 1 }} data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
+        <div className="zone-badge gaze-fade" style={{ opacity: ghost ? Math.max(gL, 0.12) : throttle ? (frame.hud.obs_tier >= 1 ? 0 : 0.4) : 1 }} data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
         {!frame.hud.observer_filter && <div className="raw-warning" data-testid="raw-feed-warning">RAW ANOMALY FEED · OBSERVER FILTER OFFLINE</div>}
       </div>
       <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />

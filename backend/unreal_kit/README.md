@@ -50,6 +50,13 @@ opposite wall/ceiling (hidden under Calm Assist), YELLOW centreline "nanite stre
 `bio.heart_rate_bpm` (MAX30102) >= 110 to set `hud.calm_assist` (show a 4-4-4-4 box-breathing pacer, fade the rest).
 Spline Mesh Components are a good fit for the three vectors in UE5.
 
+## Observer Throttle (Hallway default mode)
+`hud.cognitive_load` 0..1 → `hud.obs_tier`: T0 <0.4, T1 <0.7, T2 <0.9, T3. Each entity has `score`
+(threat weight × 1/distance × approach bonus) and `approach_mps`; give the top score a full card beside the entity
+with a leader line, tags for the rest, keep a centre circle (25% of view width) free of text, and fade with 300 ms
+Widget Animations. `env { em_ut, thermal_c, imu_jitter_deg }` is compared against a recorded baseline (mean ± std);
+flag only values beyond 4σ and ≥5%.
+
 ## Later: real hardware
 Your ESP32/Teensy can publish the same JSON either by `POST /api/telemetry` or a WebSocket
 to `/api/ws/hud?role=publisher`, or you can point `ServerUrl` straight at a WebSocket server on the ESP32.

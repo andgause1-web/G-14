@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { ENTITY_TYPES } from "@/lib/corridor";
 import { clamp, threatLabel } from "@/lib/sim";
@@ -19,14 +20,18 @@ export const clearRadius = (W) => W * 0.125;
 function hitsClear(box, cx, cy, R) {
   const nx = clamp(cx, box.lx, box.lx + box.w);
   const ny = clamp(cy, box.ly, box.ly + box.h);
-  return (nx - cx) ** 2 + (ny - cy) ** 2 < R * R;
+  return (nx - cx) ** 2 + (ny - cy) ** 2 < (R + 16) ** 2;
 }
 
-export function layoutContacts(frame, tier, W, H) {
+export function layoutContacts(frame, tier, W, H, prevTop = []) {
   const cx = W / 2;
   const cy = H / 2;
   const R = clearRadius(W);
   const ranked = frame.scan.entities.filter((e) => e.stage !== "DETECTED" && e.type !== "boss").sort((a, b) => b.score - a.score);
+  // hysteresis: keep the current top contact(s) unless clearly outscored (>20%)
+  const best = ranked[0]?.score || 0;
+  const sticky = ranked.filter((e) => prevTop.includes(e.id) && e.score >= best * 0.8);
+  ranked.splice(0, ranked.length, ...sticky, ...ranked.filter((e) => !sticky.includes(e)));
   const nearest = ranked.filter((e) => e.disposition === "HOSTILE").sort((a, b) => a.distance_m - b.distance_m)[0];
   const list = tier === 3 ? (nearest ? [nearest] : []) : tier === 2 ? ranked.slice(0, 1) : ranked;
   const maxCards = tier === 0 ? 2 : tier === 1 ? 1 : 0;
@@ -51,8 +56,12 @@ export function layoutContacts(frame, tier, W, H) {
       kind = "tag";
       box = place("tag");
     }
-    for (let g = 0; g < 8 && placed.some((p) => overlap(p, box)); g++) box.ly -= TAG.h + 4;
-    const reg = `${Math.floor(box.lx / (W / 3))}:${Math.floor(box.ly / (H / 3))}`;
+    for (let g = 0; g < 12 && placed.some((p) => overlap(p, box)); g++) {
+      box.ly -= TAG.h + 4;
+      for (let k = 0; k < 60 && hitsClear(box, cx, cy, R); k++) box.lx += side * 10;
+    }
+    if (placed.some((p) => overlap(p, box)) || hitsClear(box, cx, cy, R)) return;
+    const reg = `${Math.floor((box.lx + box.w / 2) / (W / 3))}:${Math.floor((box.ly + box.h / 2) / (H / 3))}`;
     regions[reg] = (regions[reg] || 0) + 1;
     if (regions[reg] > 3) return;
     placed.push({ ...box, e, T, kind, ax, ay });
@@ -101,14 +110,15 @@ const DirectionArrow = ({ target, W, H }) => {
 export function baselineDeviation(env, baseline) {
   if (!baseline) return null;
   const ch = [["EM", env.em_ut, baseline.em], ["THERMAL", env.thermal_c, baseline.thermal], ["IMU", env.imu_jitter_deg, baseline.imu]];
-  const devs = ch.map(([k, v, b]) => [k, (Math.abs(v - b.mean) / Math.max(Math.abs(b.mean), 1e-3)) * 100, v - b.mean]);
+  const devs = ch.map(([k, v, b]) => [k, (Math.abs(v - b.mean) / Math.max(Math.abs(b.mean), 1e-3)) * 100, v - b.mean, Math.abs(v - b.mean) / Math.max(b.std, 1e-3)]);
   return devs.sort((a, b) => b[1] - a[1]);
 }
 
 const BaselineChip = ({ env, baseline }) => {
   const devs = baselineDeviation(env, baseline);
   if (!devs) return <Link to="/baseline" className="baseline-chip none" data-testid="baseline-indicator">NO BASELINE · CALIBRATE</Link>;
-  const flagged = devs.filter((d) => d[1] >= 8);
+  // flag only real deviations: beyond 4 sigma of the recorded noise AND at least 5%
+  const flagged = devs.filter((d) => d[3] >= 4 && d[1] >= 5);
   if (!flagged.length) return <div className="baseline-chip ok" data-testid="baseline-indicator">BASELINE STABLE</div>;
   return (
     <div className="baseline-chip dev" data-testid="baseline-indicator">
@@ -130,7 +140,9 @@ export const ThrottleHud = ({ frame, frameRef, events, gaze, baseline, view }) =
   const gR = reveal(gaze, 1);
   const base = (g) => (tier === 0 ? Math.max(0.4, g) : 0.85);
   const drift = frame.eeg.state !== "STABLE" || frame.eeg.stasis_index < 0.6;
-  const { placed, nearest } = layoutContacts(frame, tier, W, H);
+  const topRef = useRef([]);
+  const { placed, nearest } = layoutContacts(frame, tier, W, H, topRef.current);
+  topRef.current = placed.filter((p) => p.kind === "card").map((p) => p.e.id);
   const target = tier === 3 ? placed[0] : null;
   return (
     <div className={`obs-hud obs-t${tier}`} data-testid="observer-throttle-hud" data-tier={tier}>

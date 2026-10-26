@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend-only test at 1920x1080 of the Observer Throttle HUD, contact cards/tags, clear zone, gaze, the Baseline page and indicator, the data feed, and a Ghost/Analyst regression. Almost everything works and there are no console or page errors. Throttle is the default mode. T0 at load 20: compass, vitals, event log, radar and loadout are 0.4; stasis is 0.25. T1 at 55: loadout is 0; the stasis strip shows (0.5); vitals are 1; .jp in obs-hud reaches opacity 0, but only after ~3 s in headless (it read 1 at 1 s). T2 at 80: ticker 0.9; event log 0 with translateX(-140%); radar has radar-dot (0.8); loadout and telemetry are 0. T3 at 95: compass, reticle and radar are 0; vitals 1; visor-frame is-critical; red edge visible. obs-fade has transition 'opacity 0.3s, transform 0.3s'. Gaze -100 at T0 sets vitals, radar, event log and stasis to 1. Contacts at lead 40: T0 has at most 2 cards (usually 1) plus tags; T1 has 1 card; T2 has 1 tag; T3 has exactly 1 tag plus obs-direction-arrow. There are no clear-zone hits at lead 40. At lead 20 / T0, 3 of 4 samples had a card bounding box inside the clear zone. A later 4-sample rerun had no hits, with labels 242-298 px from centre against R=240. Baseline: fast toggle, start, 60/60 s in 6.5 s, and baseline-result 'BASELINE STABLE' all work. The 3 channels show mean ± std. localStorage g14.baseline is set and baseline-clear-button removes it. With no baseline the chip reads 'NO BASELINE · CALIBRATE' and links to /baseline. At lead 40 it reads 'IMU DEVIATION +357% / EM DEVIATION +47%'. BUG: at lead 100 (at rest) the indicator flickers between 'BASELINE STABLE' and 'IMU DEVIATION +10/11%'. Data feed has env{em_ut,thermal_c,imu_jitter_deg}, scan.entities[].score/approach_mps and hud.obs_tier. Regression passed: Ghost ladder levels 0, 1 (lead 60), 1 (lead 40), 2 (lead 20, 3 tags, yellow vector), 3 (lead 0, red vector). Analyst shows its slots, and throttle can be re-selected. '/' and '/unreal' load.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BaselineChip (ThrottleHud.jsx baselineDeviation)", "issue": "False deviation at rest. The IMU baseline mean is ~0.30 and the live signal swings by ±0.04 (sin(t*5)*0.04), which is ±13% of the mean. The fixed 8% relative threshold therefore flags 'IMU DEVIATION +10/11%' about 50% of the time at lead 100 with no entities near. The chip flickers between STABLE and DEVIATION. Fix: use std, e.g. flag only when |v-mean| > 3σ (σ is already stored), or require a minimum absolute delta, or smooth the value.", "selector": "[data-testid=baseline-indicator]", "priority": "HIGH"},
+      {"component": "layoutContacts clear zone", "issue": "At lead 20 / T0, cards (obs-card-P-01, G-01, P-02) were measured inside the 12.5%-width clear circle in 3 of 4 samples. A later rerun had no hits, with labels only 2-58 px outside R. Likely causes: (a) the hud-layer sway/inertial-lag translate (up to ~10 px) moves labels relative to the viewport centre, while hitsClear uses the unshifted W/2, H/2; (b) the vertical overlap shift (box.ly -= TAG.h+4) runs after the clear-zone push and is never re-checked. Fix: re-run hitsClear after the vertical shift and add a ~16 px safety margin to R.", "selector": "[data-testid^=obs-card-]", "priority": "MEDIUM"},
+      {"component": "Contacts card assignment", "issue": "The full card jumps between similarly scored pygmies frame to frame (card was P-01 -> G-01 -> P-02 within ~1.4 s at lead 40). Pygmy distance jitter changes the score every frame. Switching Card<->Tag at the same key remounts the element and restarts the boot-fade animation, so labels flicker. Add hysteresis, e.g. keep the current top contact unless another scores more than 20% higher for over 500 ms.", "selector": "[data-testid^=obs-card-]", "priority": "MEDIUM"},
+      {"component": "Labels overlap / region cap", "issue": "Labels sometimes overlap or crowd one region. Once at T0 two tags overlapped (obs-tag-P-04 x obs-tag-N-01), because the 8-step upward shift does not always clear the overlap. The region is keyed on the box's top-left corner, so tags sitting on a region line can put 4 visible labels in one third-of-screen cell when counted by centre.", "selector": "[data-testid^=obs-tag-]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/hallway throttle T1-T3", "issues": ["The zone-badge ('ZONE 1 · THE WARDS 病棟') is outside .obs-hud. It stays visible at T3 (spec: only marker, heart ring, arrow), and its Japanese sublabel is not hidden at T1+.", "The Japanese name labels in the entity layer (CorridorScene .cl-name .jp) are also outside .obs-hud and are not hidden at T1+."]},
+      {"screen": "/baseline", "issues": ["In fast mode only 60 samples are collected. The sparkline maps x = i/299*520, so the trace fills only ~1/5 of the canvas width. Scale x by the sample count."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Change the baseline deviation rule to use std (z-score) or an absolute minimum, so the IMU chip stops flickering 'DEVIATION +10%' at rest",
+    "layoutContacts: re-check the clear zone after the vertical overlap shift, and add a margin for hud-layer sway/lag (~16 px)",
+    "Add hysteresis to top-contact card selection so the card does not jump between pygmies every frame",
+    "Hide the zone-badge at T3 (or move it inside ThrottleHud), and hide .jp outside obs-hud (zone badge, entity labels) at T1+",
+    "Baseline sparkline: scale x by samples.length"
+  ],
+  "critical_code_review_comments": [
+    "HallwayPage mutates the lag ref during render (lag.yaw += ...). This is frame-rate dependent and double-applied under StrictMode. Move it to an rAF/effect, or make it time-based for a real 80-120 ms lag.",
+    "ThrottleHud reads window.innerWidth/innerHeight at render with no resize listener. Layout only updates on the next frame re-render, which is OK while the sim runs.",
+    "baseline is useMemo([]) read from localStorage on mount, so it needs a reload or navigation after recording (as designed). A storage event listener would remove that.",
+    "DirectionArrow fallback at T3: when nearest exists but was dropped from placed, the target is the centre and atan2(0,0)=0, so the arrow points right arbitrarily."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "~88%"},
+  "seed_data_creation": "localStorage g14.baseline recorded in the test browser only",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Slider control: focus '[data-testid=slider-load] [role=slider]', press Home, then ArrowRight N times. Closing the panel (hallway-panel-close-button) helps measurements. In headless, CSS opacity transitions/animations lag: getComputedStyle values are unreliable before ~3 s, so assert inline style.opacity on obs-* slots instead. Entities sit under scan.entities in the data feed JSON. step-closer x3 then wait ~9 s gives lead 40; x4 gives lead 20. The clear-zone check uses viewport centre and R=0.125*W=240 at 1920."
+}

@@ -29,7 +29,7 @@ const Spark = ({ samples, color }) => {
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     s.slice(-300).forEach((v, i, a) => {
-      const x = (i / 299) * 520;
+      const x = (i / (a.length - 1)) * 520;
       const y = 50 - ((v - min) / (max - min)) * 40;
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
