@@ -62,7 +62,7 @@ export const StasisMeter = ({ frame, frameRef }) => {
       </div>
       <Waveform frameRef={frameRef} />
       <div className={`stasis-state state-${state.toLowerCase()}`} data-testid="stasis-state">
-        CONSCIOUSNESS {state} <span className="jp">{stable ? "意識安定" : "意識不安定"}</span>
+        CONSCIOUSNESS {state} <span className="jp">{{ STABLE: "意識安定", DRIFTING: "意識漂流", UNSTABLE: "意識不安定" }[state]}</span>
       </div>
     </div>
   );

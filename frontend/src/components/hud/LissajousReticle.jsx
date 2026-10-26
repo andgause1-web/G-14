@@ -66,7 +66,7 @@ export const LissajousReticle = ({ frameRef }) => {
     const res = f.scan.resonance;
     const lock = f.hud.target_lock;
     const target = f.hud.stable_zone ? 1 : 0;
-    mix.current += (target - mix.current) * 0.04;
+    mix.current += (target - mix.current) * 0.08;
     const m = mix.current;
     const c = SIZE / 2;
     const a = 1 + Math.floor(res * 4);

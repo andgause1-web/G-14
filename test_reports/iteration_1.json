@@ -1,0 +1,28 @@
+{
+  "summary": "First full test run of G-14 Aether Wave HUD simulator. Backend: 9/9 pytest pass (telemetry POST valid/invalid/missing/non-object, latest, stream status, WS publisher->subscriber relay incl. junk/invalid frame filtering and subscriber-send ignored, unreal files=9 with content, kit.zip with 9 entries under G14Hud/). Frontend: all requested flows verified on desktop 1920x1080 — Calm HUD (all slots, E-01/E-02, CONSCIOUSNESS STABLE, stable-zone shown), Combat (4 entities, COMBAT, TARGET LOCK, throttle T1), Overload (5 entities, OBSERVER THROTTLE T2, stable-zone gone, compass/radar opacity 0.12, stasis 0.35), sliders via keyboard update values/HUD and set CUSTOM, yaw moves compass heading 000->010, all 5 layer toggles hide/show slots, throttling off removes indicator and restores opacity, scanlines toggle, data feed JSON with correct schema/sensors, stream toggle -> STREAMING + LIVE indicator, backend publishers=1 and frames increasing, in-browser WS subscriber received 17 frames, /api/telemetry/latest returns SIMULATOR frame, toggle off -> OFFLINE and publishers=0. Unreal page: 9 files, default file G14TelemetryReceiver.cpp, click updates path, copy toast, download works, zip href correct, schema table 17 rows, 4 endpoints correct. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Visor", "issues": ["Stasis meter Japanese sub-label shows '意識不安定' (unstable) for both DRIFTING and UNSTABLE states - cosmetic", "hud-system-line SEQ stays 00000 while not streaming (seq only increments on send) - cosmetic"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_g14_hud_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: in useSimulation, if the WS closes unexpectedly (server restart/network) the Stream toggle stays ON but status shows OFFLINE with no reconnect; consider auto-reconnect or resetting the toggle",
+    "Optional: Japanese label for DRIFTING state"
+  ],
+  "critical_code_review_comments": [
+    "useSimulation.js: ws.onclose does not set streaming=false or reconnect -> toggle/status mismatch after unexpected disconnect",
+    "server.py: /unreal/kit.zip calls read_kit() synchronously in the event loop (files endpoint uses asyncio.to_thread) - minor inconsistency",
+    "server.py: hub.publish sends to subscribers sequentially; a slow subscriber blocks the publisher loop - acceptable for MVP",
+    "Anyone can connect with ?role=publisher (no auth) - acceptable per no-auth requirement but worth noting for real helmet deployment"
+  ],
+  "updated_files": ["/app/backend/tests/test_g14_hud_api.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None. Test POSTs telemetry frames with source TEST_ (in-memory hub only).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Hub state is in-memory (frames/latest). Python urllib to the public URL gets 403 (UA blocked) - use requests or page.request. Radix slider: focus [role=slider] inside slider-* testid and press arrows/PageUp. Disable toggle-auto-sway before checking yaw heading. Mobile/tablet layout not tested."
+}

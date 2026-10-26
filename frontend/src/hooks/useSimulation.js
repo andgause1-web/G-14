@@ -18,15 +18,15 @@ export function useSimulation(controls, streaming) {
     const loop = (now) => {
       const f = buildFrame(controlsRef.current, (now - t0) / 1000, seq);
       frameRef.current = f;
+      const ws = wsRef.current;
+      if (now - lastSend > 100) {
+        lastSend = now;
+        seq += 1;
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ ...f, seq }));
+      }
       if (now - lastUi > 33) {
         lastUi = now;
         setFrame(f);
-      }
-      const ws = wsRef.current;
-      if (ws && ws.readyState === 1 && now - lastSend > 100) {
-        lastSend = now;
-        seq += 1;
-        ws.send(JSON.stringify({ ...f, seq }));
       }
       raf = requestAnimationFrame(loop);
     };
