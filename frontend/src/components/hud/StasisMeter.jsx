@@ -1,8 +1,8 @@
 import { Brain } from "lucide-react";
 import { useCanvasLoop } from "@/hooks/useCanvasLoop";
 
-const W = 250;
-const H = 56;
+const W = 186;
+const H = 30;
 const BANDS = [
   { k: "alpha", label: "ALPHA", hz: 10 },
   { k: "beta", label: "BETA", hz: 20 },

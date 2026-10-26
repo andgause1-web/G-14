@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useCanvasLoop } from "@/hooks/useCanvasLoop";
 
-const SIZE = 300;
+const SIZE = 220;
 
 function metatronNodes(r) {
   const pts = [[0, 0]];
@@ -22,7 +22,7 @@ function drawMetatron(ctx, c, r, t, alpha) {
   ctx.globalAlpha = alpha;
   ctx.strokeStyle = "rgba(229,193,88,0.85)";
   ctx.shadowColor = "rgba(229,193,88,0.9)";
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 3;
   ctx.lineWidth = 0.9;
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
@@ -72,29 +72,49 @@ export const LissajousReticle = ({ frameRef }) => {
     const a = 1 + Math.floor(res * 4);
     const col = lock ? "#ff2a4b" : "#00f0ff";
 
-    ctx.strokeStyle = "rgba(0,240,255,0.35)";
+    ctx.strokeStyle = "rgba(0,240,255,0.14)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(c, c, c - 14, 0, Math.PI * 2);
+    ctx.arc(c, c, c - 10, 0, Math.PI * 2);
     ctx.stroke();
-    for (let i = 0; i < 72; i++) {
-      const ang = (i / 72) * Math.PI * 2 + t * 0.1;
-      const l = i % 6 === 0 ? 9 : 4;
+    for (let i = 0; i < 36; i++) {
+      const ang = (i / 36) * Math.PI * 2 + t * 0.1;
+      const l = i % 9 === 0 ? 6 : 3;
       ctx.beginPath();
-      ctx.moveTo(c + Math.cos(ang) * (c - 14), c + Math.sin(ang) * (c - 14));
-      ctx.lineTo(c + Math.cos(ang) * (c - 14 - l), c + Math.sin(ang) * (c - 14 - l));
+      ctx.moveTo(c + Math.cos(ang) * (c - 10), c + Math.sin(ang) * (c - 10));
+      ctx.lineTo(c + Math.cos(ang) * (c - 10 - l), c + Math.sin(ang) * (c - 10 - l));
       ctx.stroke();
     }
 
-    const R = c * 0.52 * (1 - m * 0.25);
-    drawLissajous(ctx, c, R, a, a + 1, t * 0.6, col, 1 - m * 0.75);
-    if (res >= 0.75) drawLissajous(ctx, c, R * 0.8, a + 2, a + 1, -t * 0.4, "#7ef3ff", 0.5 * (1 - m));
-    if (m > 0.02) drawMetatron(ctx, c, c * 0.2, t, m);
+    const R = c * 0.46 * (1 - m * 0.25);
+    drawLissajous(ctx, c, R, a, a + 1, t * 0.6, col, 0.28 * (1 - m * 0.7));
+    if (res >= 0.75) drawLissajous(ctx, c, R * 0.8, a + 2, a + 1, -t * 0.4, "#7ef3ff", 0.14 * (1 - m));
+    if (m > 0.02) drawMetatron(ctx, c, c * 0.18, t, m * 0.22);
 
-    const k = 26;
-    const o = c - 42;
+    // crosshair: gapped lines + center dot, kept crisp above the faint pattern
+    const gap = lock ? 6 : 9;
+    const len = 16;
+    ctx.save();
     ctx.strokeStyle = col;
-    ctx.lineWidth = 2;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 4;
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 1.5;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(c + dx * gap, c + dy * gap);
+      ctx.lineTo(c + dx * (gap + len), c + dy * (gap + len));
+      ctx.stroke();
+    });
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(c, c, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    const k = 12;
+    const o = lock ? c - 46 : c - 30;
+    ctx.globalAlpha = lock ? 0.75 : 0.35;
+    ctx.lineWidth = 1.2;
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
       const x = c + sx * o;
       const y = c + sy * o;
@@ -104,10 +124,7 @@ export const LissajousReticle = ({ frameRef }) => {
       ctx.lineTo(x - sx * k, y);
       ctx.stroke();
     });
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.arc(c, c, 2.2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.restore();
   }, SIZE, SIZE);
 
   return <canvas ref={ref} style={{ width: SIZE, height: SIZE }} data-testid="lissajous-reticle-canvas" />;

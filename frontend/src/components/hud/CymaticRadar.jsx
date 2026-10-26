@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useCanvasLoop } from "@/hooks/useCanvasLoop";
 import { wrap180 } from "@/lib/sim";
 
-const SIZE = 210;
+const SIZE = 140;
 const RES = 96;
 const MODES = [[1, 2], [2, 3], [1, 4], [3, 4], [2, 5], [3, 5], [4, 5], [3, 7], [5, 6], [4, 7]];
 const MAX_RANGE = 300;
@@ -49,7 +49,7 @@ export const CymaticRadar = ({ frameRef }) => {
 
   const ref = useCanvasLoop((ctx, t) => {
     const f = frameRef.current;
-    const R = SIZE / 2 - 8;
+    const R = SIZE / 2 - 6;
     const cx = SIZE / 2;
     drawField(off, f.scan.resonance, f.scan.stability, t);
     ctx.globalAlpha = 0.9;
