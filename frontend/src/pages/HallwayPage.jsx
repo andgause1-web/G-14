@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
 import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT } from "@/lib/corridor";
 import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue, AlertPips, TelemetryEdge, GazeDot, reveal } from "@/components/corridor/GhostHud";
+import { ThrottleHud } from "@/components/corridor/ThrottleHud";
 import { useSimulation } from "@/hooks/useSimulation";
 import { VisorFrame } from "@/components/hud/VisorFrame";
 import { CorridorBackground, CorridorEntityLayer } from "@/components/corridor/CorridorScene";
@@ -80,10 +81,18 @@ export default function HallwayPage() {
 
   const tier = frame.hud.throttle_tier;
   const op = (k) => layerOpacity(k, tier);
-  const { pitch_deg, roll_deg } = frame.imu;
-  const sway = { transform: `translate(${roll_deg * 0.8}px, ${pitch_deg * 1.2}px) rotate(${roll_deg * 0.08}deg)` };
+  const { pitch_deg, roll_deg, yaw_deg } = frame.imu;
+  const lag = useRef({ yaw: yaw_deg, pitch: pitch_deg }).current;
+  lag.yaw += (yaw_deg - lag.yaw) * 0.28;
+  lag.pitch += (pitch_deg - lag.pitch) * 0.28;
+  // inertial lag: helmet panels trail head motion ~100 ms, then settle
+  const lagX = (lag.yaw - yaw_deg) * 9;
+  const lagY = (pitch_deg - lag.pitch) * 9;
+  const sway = { transform: `translate(${roll_deg * 0.8 + lagX}px, ${pitch_deg * 1.2 + lagY}px) rotate(${roll_deg * 0.08}deg)` };
   const zone = ZONES[controls.zone];
   const ghost = controls.mode === "ghost";
+  const throttle = controls.mode === "throttle";
+  const baseline = useMemo(() => JSON.parse(localStorage.getItem("g14.baseline") || "null"), []);
   const calm = frame.hud.calm_assist;
   const level = frame.hud.alert_level;
   const [mouseGaze, setMouseGaze] = useState(0);
@@ -106,6 +115,9 @@ export default function HallwayPage() {
       <CorridorEntityLayer frame={frame} tier={tier} />
       {ghost && <Periphery frame={frame} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
+        {throttle ? (
+          <ThrottleHud frame={frame} frameRef={frameRef} events={events} gaze={gaze} baseline={baseline} view={view} />
+        ) : (<>
         <div className="hud-slot slot-compass" style={{ opacity: ghost ? (level >= 3 ? 0.35 : 0.08) : op("compass") }}><DynamicCompass frame={frame} /></div>
         {ghost ? (
           <>
@@ -134,10 +146,11 @@ export default function HallwayPage() {
         {ghost && <div className="hud-slot slot-pips"><AlertPips level={level} /></div>}
         {calm && <div className="hud-slot slot-breath"><BreathPacer /></div>}
         <div className="hud-slot slot-progress gaze-fade" style={{ opacity: ghost ? Math.max(gR, level >= 2 ? 0.5 : 0.06) : 1 }}><CorridorProgress frame={frame} interval={controls.interval} /></div>
+        </>)}
         <div className="zone-badge gaze-fade" style={{ opacity: ghost ? Math.max(gL, 0.12) : 1 }} data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
         {!frame.hud.observer_filter && <div className="raw-warning" data-testid="raw-feed-warning">RAW ANOMALY FEED · OBSERVER FILTER OFFLINE</div>}
       </div>
-      <VisorFrame overload={tier === 2 && !calm} scanlines hr={frame.bio.heart_rate_bpm} />
+      <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">
         ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {playing ? "AUTO-ADVANCING" : "MANUAL"} · ALL ENTITY DATA SIMULATED

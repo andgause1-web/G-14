@@ -101,7 +101,7 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
-  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "ghost", audio: true, gaze: 0, mouseGaze: false,
+  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "throttle", audio: true, gaze: 0, mouseGaze: false, loadManual: false, load: 30,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
@@ -147,11 +147,25 @@ function buildEntity(e, c, lead, t) {
   };
 }
 
+export function envReadings(entities, t) {
+  const p2 = (e) => (1 - e.distance_m / CORRIDOR_LENGTH) ** 2;
+  const sum = (types, k) => entities.filter((e) => types.includes(e.type)).reduce((s, e) => s + p2(e) * k, 0);
+  return {
+    sensor: "TSL1401CL+MLX90640+BMI270",
+    em_ut: r(45 + sum(["golem"], 40) + sum(["pygmy", "wraith", "gnome"], 6) + Math.sin(t * 3) * 0.8, 1),
+    thermal_c: r(21 - sum(["wraith"], 8) + Math.sin(t * 0.7) * 0.2, 2),
+    imu_jitter_deg: r(0.3 + sum(["pygmy"], 0.8) + Math.sin(t * 5) * 0.04, 3),
+  };
+}
+
+export const obsTierOf = (load) => (load >= 0.9 ? 3 : load >= 0.7 ? 2 : load >= 0.4 ? 1 : 0);
+
 export function makeCorridorSim() {
   let lead = DEFAULT_CORRIDOR.distance;
   let last = null;
   let observe = 0;
   let resetKey = 0;
+  const prevD = {};
   return (c, t, seq) => {
     const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
     last = t;
@@ -166,6 +180,15 @@ export function makeCorridorSim() {
     const imu = headMotion(c, t);
     const zone = ZONES[c.zone];
     const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t));
+    // contact priority: threat weight x (1 / distance) x approach-speed bonus
+    entities.forEach((e) => {
+      const p = prevD[e.id];
+      const v = dt > 0 && p != null ? (p - e.distance_m) / dt : 0;
+      prevD[e.id] = e.distance_m;
+      e.approach_mps = r(Math.max(0, v), 1);
+      const w = e.disposition === "HOSTILE" ? e.threat : e.threat * 0.3;
+      e.score = r((w * 100 * (1 + clamp(v / 4))) / Math.max(1, e.distance_m), 3);
+    });
     const hostile = entities.filter((e) => e.disposition === "HOSTILE");
     const nearest = hostile.reduce((m, e) => Math.min(m, e.distance_m), CORRIDOR_LENGTH);
     const maxThreat = hostile.reduce((m, e) => Math.max(m, e.threat), 0);
@@ -175,7 +198,8 @@ export function makeCorridorSim() {
 
     const stress = clamp(proxN * 0.85 * (1.3 - comp) + (c.filter ? 0 : 0.35));
     const eeg = eegFrom({ alpha: 60 - 45 * stress, beta: 20 + 65 * stress, theta: 28 - 18 * stress, delta: 12 - 7 * stress, gamma: 8 + 60 * stress }, t);
-    const load = clamp(0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15);
+    const autoLoad = clamp(0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15);
+    const load = c.loadManual ? c.load / 100 : autoLoad;
     const stability = clamp((c.filter ? 0.92 : 0.35) - 0.55 * proxN * (1.2 - comp));
 
     if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 1.5);
@@ -205,6 +229,7 @@ export function makeCorridorSim() {
       eeg,
       imu,
       bio: { sensor: "MAX30102", heart_rate_bpm: Math.round(hr), spo2: Math.round(98 - stress * 3) },
+      env: envReadings(entities, t),
       scan: { sensor: "TSL1401CL", resonance: r(clamp(0.25 + 0.65 * proxN)), stability: r(stability), entities },
       hud: {
         cognitive_load: r(load),
@@ -217,6 +242,7 @@ export function makeCorridorSim() {
         calm_assist: calm,
         focus_ids: focus,
         alert_level: alert,
+        obs_tier: obsTierOf(load),
       },
     };
   };

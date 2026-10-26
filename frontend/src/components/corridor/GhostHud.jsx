@@ -5,7 +5,7 @@ import { ENTITY_TYPES } from "@/lib/corridor";
 
 const CAM_H = 1.6;
 
-function toScreen([x, y, z], imu, W, H) {
+export function toScreen([x, y, z], imu, W, H) {
   const f = H * 0.94;
   return [
     W / 2 + (f * x) / z - (imu.yaw_deg * W) / FOV_H,

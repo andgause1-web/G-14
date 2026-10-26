@@ -173,7 +173,7 @@ export const CorridorEntityLayer = ({ frame, tier }) => {
         {ents.map((e) => <CorridorEntity key={e.id} e={e} frame={frame} W={W} H={H} />)}
       </div>
       <div className="callout-layer" style={rot} data-testid="corridor-callout-layer">
-        {ghost ? <GhostTags frame={frame} /> : <Callouts items={layoutCallouts(items, W, H, frame.hud.observer_filter, measured.current)} frame={frame} measured={measured.current} />}
+        {ghost ? <GhostTags frame={frame} /> : frame.hud.mode === "throttle" ? null : <Callouts items={layoutCallouts(items, W, H, frame.hud.observer_filter, measured.current)} frame={frame} measured={measured.current} />}
       </div>
     </>
   );

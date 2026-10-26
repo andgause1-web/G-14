@@ -31,11 +31,11 @@ export const WorldBackground = ({ frameRef }) => {
   );
 };
 
-export const VisorFrame = ({ overload, scanlines, hr = 72 }) => {
+export const VisorFrame = ({ overload, scanlines, hr = 72, critical = false }) => {
   const stress = Math.min(1, Math.max(0, (hr - 70) / 60));
   const breath = (60 / (12 + stress * 16)).toFixed(2);
   return (
-    <div className={`visor-frame ${overload ? "is-overload" : ""}`} data-testid="visor-frame">
+    <div className={`visor-frame ${overload ? "is-overload" : ""} ${critical ? "is-critical" : ""}`} data-testid="visor-frame">
       <div className="visor-refract" data-testid="visor-refraction" />
       <div className="visor-fringe" />
       <div className="visor-reflect" data-testid="visor-reflection"><img src={OPERATOR.portrait} alt="" /></div>

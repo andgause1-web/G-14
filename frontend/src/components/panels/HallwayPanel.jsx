@@ -15,10 +15,13 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
       </div>
       <div className="drawer-body">
         <div className="group-title">HUD MODE <span className="jp">表示モード</span></div>
-        <div className="preset-row two">
-          <button className={`preset-btn ${controls.mode === "ghost" ? "active-cross" : ""}`} onClick={() => set("mode", "ghost")} data-testid="mode-ghost-button">3-VECTOR GHOST</button>
-          <button className={`preset-btn ${controls.mode === "full" ? "active-cross" : ""}`} onClick={() => set("mode", "full")} data-testid="mode-full-button">FULL ANALYST</button>
+        <div className="preset-row">
+          <button className={`preset-btn ${controls.mode === "throttle" ? "active-cross" : ""}`} onClick={() => set("mode", "throttle")} data-testid="mode-throttle-button">THROTTLE</button>
+          <button className={`preset-btn ${controls.mode === "ghost" ? "active-cross" : ""}`} onClick={() => set("mode", "ghost")} data-testid="mode-ghost-button">3-VECTOR</button>
+          <button className={`preset-btn ${controls.mode === "full" ? "active-cross" : ""}`} onClick={() => set("mode", "full")} data-testid="mode-full-button">ANALYST</button>
         </div>
+        <ToggleRow id="load-manual" label="Manual cognitive load" checked={controls.loadManual} onChange={(v) => set("loadManual", v)} />
+        {controls.loadManual && <SliderRow id="load" label="Cognitive load (T0 <40 · T1 <70 · T2 <90 · T3)" min={0} max={100} value={controls.load} onChange={set} />}
         <div className="hint-text">Ghost: max 3 threats, colour vectors instead of text, edge glows for direction. Calm Assist kicks in above 110 BPM.</div>
         <ToggleRow id="audio-cues" label="Spatial audio pings (bone conduction)" checked={controls.audio} onChange={(v) => set("audio", v)} />
         <div className="hint-text">Calm by default: quiet → peripheral flash (contact) → audio + stream line (≤40 m) → full vector overlay (≤20 m).</div>
