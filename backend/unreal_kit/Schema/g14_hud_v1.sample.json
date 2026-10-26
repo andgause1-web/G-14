@@ -1,0 +1,23 @@
+{
+  "schema": "g14.hud.v1",
+  "seq": 1204,
+  "t_ms": 1780000000000,
+  "source": "SIMULATOR",
+  "eeg": {
+    "sensor": "ADS1299",
+    "bands": { "delta": 0.09, "theta": 0.22, "alpha": 0.46, "beta": 0.17, "gamma": 0.06 },
+    "stasis_index": 0.94,
+    "state": "STABLE"
+  },
+  "imu": { "sensor": "BMI270", "yaw_deg": 4.2, "pitch_deg": -0.8, "roll_deg": 1.1 },
+  "scan": {
+    "sensor": "TSL1401CL",
+    "resonance": 0.35,
+    "stability": 0.88,
+    "entities": [
+      { "id": "E-01", "class": "UNKNOWN", "bearing_deg": -24.1, "elevation_deg": -3.0, "distance_m": 140.0, "threat": 0.05 },
+      { "id": "E-02", "class": "LUCIFERIC", "bearing_deg": 26.3, "elevation_deg": 2.4, "distance_m": 189.0, "threat": 0.0 }
+    ]
+  },
+  "hud": { "cognitive_load": 0.23, "throttle_tier": 0, "target_lock": false, "stable_zone": true }
+}

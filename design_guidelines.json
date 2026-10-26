@@ -1,0 +1,91 @@
+{
+  "project_name": "G-14 Aether Wave Helmet Diegetic HUD Simulator",
+  "design_context": "Diegetic Sci-Fi Sci-Tech HUD Simulation & Technical Developer Tool",
+  "theme": "Dark, Cinematic, Diegetic - Near-black dark background with cyan holographic graphics, warning red alerts, and sacred geometry gold accents",
+  "typography": {
+    "heading_font": "Share Tech Mono, Rajdhani, Orbitron, Space Mono, monospace",
+    "body_font": "Share Tech Mono, JetBrains Mono, monospace",
+    "sublabel_font": "Noto Sans JP, Japanese monospace fallback",
+    "scale": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-mono tracking-widest uppercase",
+      "h2": "text-xl sm:text-2xl lg:text-3xl font-mono tracking-wider uppercase",
+      "h3": "text-lg sm:text-xl font-mono tracking-wide uppercase",
+      "h4": "text-sm sm:text-base font-mono uppercase tracking-wider",
+      "body": "text-xs sm:text-sm font-mono tracking-wide",
+      "label": "text-[10px] sm:text-xs font-mono uppercase tracking-widest text-cyan-400/70",
+      "sublabel_jp": "text-[9px] font-sans tracking-tight text-cyan-300/50"
+    }
+  },
+  "colors": {
+    "background_deep": "#05070a",
+    "background_visor": "#080c14",
+    "cyan_glow": "#00f0ff",
+    "cyan_dim": "rgba(0, 240, 255, 0.25)",
+    "cyan_border": "rgba(0, 240, 255, 0.4)",
+    "gold_geometry": "#e5c158",
+    "gold_glow": "rgba(229, 193, 88, 0.6)",
+    "alert_red": "#ff2a4b",
+    "alert_red_glow": "rgba(255, 42, 75, 0.5)",
+    "emerald_stable": "#00ff9d",
+    "amber_warning": "#ffaa00",
+    "panel_bg": "rgba(8, 14, 26, 0.85)",
+    "panel_border": "rgba(0, 240, 255, 0.3)"
+  },
+  "visual_enhancers": {
+    "scanlines": "repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px)",
+    "visor_vignette": "radial-gradient(circle at center, transparent 50%, rgba(2,6,12,0.7) 85%, rgba(0,0,0,0.95) 100%)",
+    "hud_glow": "drop-shadow(0 0 6px rgba(0, 240, 255, 0.6))",
+    "gold_glow": "drop-shadow(0 0 8px rgba(229, 193, 88, 0.7))",
+    "alert_glow": "drop-shadow(0 0 8px rgba(255, 42, 75, 0.8))",
+    "glassmorphism": "backdrop-blur-md bg-[#080c14]/85 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,240,255,0.15)]"
+  },
+  "layouts": {
+    "visor_view": "Full screen 100vh canvas/SVG layout with HUD overlay frame, scanlines toggle, curvature effect, and responsive corner HUD modules",
+    "control_drawer": "Slide-out or collapsible right panel with sliders (Aether frequency, Cymatic resonance, Target distance, Threat level), preset buttons (Calm/Nominal, Combat/Active, Overload/Critical), and HUD element toggles",
+    "data_feed": "Real-time dynamic JSON state reader displaying current helmet telemetry, target lock coordinates, EEG spectral density, and IMU vector",
+    "unreal_integration_page": "Developer export hub with tabbed Unreal Engine C++ / Blueprints starter code, HLSL shader snippets, step-by-step HUD setup guide, copy & download options"
+  },
+  "hud_modules": [
+    {
+      "name": "01 STASIS METER EEG",
+      "description": "Multi-band brainwave frequency monitor (Delta, Theta, Alpha, Beta, Gamma) with real-time dynamic canvas waveform, neural stability score, and Japanese sub-label Stasis Sync status"
+    },
+    {
+      "name": "02 DYNAMIC COMPASS IMU",
+      "description": "Horizontal rolling heading strip (0° to 360°) with pitch/roll attitude indicators, cardinal markers (N, NE, E, SE, S, SW, W, NW), and real-time gyro degree readout"
+    },
+    {
+      "name": "03 ENTITY SILHOUETTE TRACKING",
+      "description": "Interactive bounding box brackets tracking threat/neutral entities in 2D/3D visor space with distance readouts, velocity vectors, target identification code, and locks"
+    },
+    {
+      "name": "04 CYMATIC RADAR CHLADNI",
+      "description": "Chladni resonance pattern generator rendering dynamic mathematical vibration node figures based on Aether Frequency sliders"
+    },
+    {
+      "name": "05 LISSAJOUS TARGETING & METATRON'S CUBE",
+      "description": "Dual-mode reticle switching dynamically between Lissajous parametric curve loops during search/scan and Metatron's Sacred Geometry Cube in locked stable phase"
+    }
+  ],
+  "motion_and_interactions": {
+    "continuous_animation": "Smooth requestAnimationFrame loops for EEG waveforms, radar sweep, Lissajous curves, and subtle HUD float",
+    "state_transitions": "0.3s cubic-bezier ease-out transitions between Nominal, Combat, and Overload warning states",
+    "overload_effects": "Rapid red flashing borders, chromatic glitch shift, corrupted ASCII stream alerts, emergency audio alert toggle",
+    "hover_states": "Interactive HUD brackets expand and highlight cyan (#00f0ff) or gold (#e5c158) with glow effect on hover"
+  },
+  "accessibility_and_testing": {
+    "contrast": "High contrast cyan and gold text against #05070a dark background meeting WCAG AA standards",
+    "testing_attributes": "All key controls, buttons, toggles, sliders, HUD sections, and code copy buttons MUST include clear data-testid attributes in kebab-case format"
+  },
+  "instructions_to_main_agent": [
+    "Build a complete, highly cinematic, interactive G-14 Aether Wave Helmet Diegetic HUD Simulator.",
+    "Implement full-screen HUD visor simulation with toggleable scanline filter, visor curvature option, and grid overlays.",
+    "Include all 5 diegetic HUD panels: Stasis Meter EEG, Dynamic Compass IMU, Entity Silhouette Tracking, Cymatic Radar Chladni, and Lissajous / Metatron's Cube targeting.",
+    "Include interactive control drawer/panel with Aether frequency slider, resonance slider, threat slider, preset buttons (Nominal, Combat, Overload), and HUD layer toggles.",
+    "Provide live JSON data stream component showing real-time helmet telemetry.",
+    "Include dedicated Unreal Engine Starter Code tab with C++ / Blueprint guidance, copy to clipboard, and code download feature.",
+    "Ensure all interactive elements have data-testid attributes for automated verification.",
+    "Ensure zero transparent dropdowns or unreadable text overlays."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": "Never use generic inter typography for main headings; use Share Tech Mono/Rajdhani/monospace for HUD fonts. Ensure full mobile and desktop responsiveness. Avoid static components - add smooth animations to waveforms, radar, reticles, and compass. Provide clear feedback for all interactive controls with data-testid attributes."
+}
