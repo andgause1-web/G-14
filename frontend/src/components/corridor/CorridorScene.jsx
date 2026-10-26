@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { FOV_H, FOV_V, threatLabel } from "@/lib/sim";
-import { CORRIDOR_IMG, ENTITY_TYPES } from "@/lib/corridor";
+import { ENTITY_TYPES } from "@/lib/corridor";
+import { GhostTags } from "./GhostHud";
 
 const CAM_H = 1.6;
 const HORIZON = 0.5;
 
-export const CorridorBackground = ({ frameRef }) => {
+export const CorridorBackground = ({ frameRef, zone }) => {
   const ref = useRef(null);
   useEffect(() => {
     let raf;
@@ -23,9 +24,10 @@ export const CorridorBackground = ({ frameRef }) => {
   }, [frameRef]);
 
   return (
-    <div className="world-bg-wrap" data-testid="corridor-background">
-      <div ref={ref} className="corridor-bg" style={{ backgroundImage: `url(${CORRIDOR_IMG})` }} />
+    <div className="world-bg-wrap" data-testid="corridor-background" data-zone={zone.short}>
+      <div ref={ref} key={zone.img} className="corridor-bg" style={{ backgroundImage: `url(${zone.img})` }} />
       <div className="world-tint corridor-tint" />
+      <div className="zone-tint" style={{ background: `radial-gradient(ellipse at 50% 50%, ${zone.tint}, transparent 75%)` }} />
       <div className="corridor-fog" />
     </div>
   );
@@ -80,7 +82,7 @@ const CorridorEntity = ({ e, frame, W, H }) => {
   const size = Math.min(Math.max(h, 6), H * 0.7);
   return (
     <div
-      className={`cor-ent t-${e.type} st-${e.stage.toLowerCase()} ${raw ? "is-raw" : "is-filtered"} ${e.disposition === "HOSTILE" ? "is-hostile" : ""}`}
+      className={`cor-ent t-${e.type} st-${e.stage.toLowerCase()} ${raw ? "is-raw" : "is-filtered"} ${e.disposition === "HOSTILE" ? "is-hostile" : ""} ${frame.hud.mode === "ghost" && e.type !== "boss" && !frame.hud.focus_ids.includes(e.id) ? "is-dim" : ""}`}
       style={{ left: x, top: feet - size, width: size, height: size, zIndex: 1000 - Math.round(e.distance_m * 5), "--ent": T.color }}
       data-testid={`corridor-entity-${e.id}`}
       data-stage={e.stage}
@@ -148,6 +150,7 @@ const Callouts = ({ items, frame, measured }) => (
 
 export const CorridorEntityLayer = ({ frame, tier }) => {
   const measured = useRef({});
+  const ghost = frame.hud.mode === "ghost";
   const W = window.innerWidth;
   const H = window.innerHeight;
   const ents = frame.scan.entities;
@@ -170,7 +173,7 @@ export const CorridorEntityLayer = ({ frame, tier }) => {
         {ents.map((e) => <CorridorEntity key={e.id} e={e} frame={frame} W={W} H={H} />)}
       </div>
       <div className="callout-layer" style={rot} data-testid="corridor-callout-layer">
-        <Callouts items={layoutCallouts(items, W, H, frame.hud.observer_filter, measured.current)} frame={frame} measured={measured.current} />
+        {ghost ? <GhostTags frame={frame} /> : <Callouts items={layoutCallouts(items, W, H, frame.hud.observer_filter, measured.current)} frame={frame} measured={measured.current} />}
       </div>
     </>
   );

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
-import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser } from "@/lib/corridor";
+import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT } from "@/lib/corridor";
+import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue } from "@/components/corridor/GhostHud";
 import { useSimulation } from "@/hooks/useSimulation";
 import { VisorFrame } from "@/components/hud/VisorFrame";
 import { CorridorBackground, CorridorEntityLayer } from "@/components/corridor/CorridorScene";
@@ -81,22 +82,46 @@ export default function HallwayPage() {
   const op = (k) => layerOpacity(k, tier);
   const { pitch_deg, roll_deg } = frame.imu;
   const sway = { transform: `translate(${roll_deg * 0.8}px, ${pitch_deg * 1.2}px) rotate(${roll_deg * 0.08}deg)` };
+  const zone = ZONES[controls.zone];
+  const ghost = controls.mode === "ghost";
+  const calm = frame.hud.calm_assist;
+  useSpatialCue(frame, controls.audio);
+  const onZone = useCallback((z) => {
+    setPlaying(false);
+    setControls((c) => ({ ...c, zone: z, distance: 100, resetKey: c.resetKey + 1 }));
+  }, []);
 
   return (
-    <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"}`} data-testid="hallway-page">
-      <CorridorBackground frameRef={frameRef} />
+    <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""}`} style={{ "--zone": zone.accent }} data-testid="hallway-page">
+      <CorridorBackground frameRef={frameRef} zone={zone} />
+      {ghost && <GhostVectors frame={frame} />}
       <CorridorEntityLayer frame={frame} tier={tier} />
+      {ghost && <Periphery frame={frame} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
-        <div className="hud-slot slot-compass" style={{ opacity: op("compass") }}><DynamicCompass frame={frame} /></div>
-        <div className="hud-slot slot-stasis curve-left" style={{ opacity: op("stasis") }}><StasisMeter frame={frame} frameRef={frameRef} /></div>
-        <div className="hud-slot slot-events curve-left"><EventLog events={events} /></div>
-        <div className="hud-slot slot-radar curve-left" style={{ opacity: op("radar") }}>
+        <div className="hud-slot slot-compass" style={{ opacity: ghost ? 0.35 : op("compass") }}><DynamicCompass frame={frame} /></div>
+        {ghost ? (
+          <div className="hud-slot slot-vitals"><VitalsChip frame={frame} /></div>
+        ) : (
+          <>
+            <div className="hud-slot slot-stasis curve-left" style={{ opacity: op("stasis") }}><StasisMeter frame={frame} frameRef={frameRef} /></div>
+            <div className="hud-slot slot-events curve-left"><EventLog events={events} /></div>
+          </>
+        )}
+        <div className="hud-slot slot-radar curve-left" style={{ opacity: ghost ? 0.45 : op("radar") }}>
           <RadarPanel frame={frame} frameRef={frameRef} maxRange={100} legend={CORRIDOR_LEGEND} />
         </div>
-        <div className="hud-slot slot-reticle"><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></div>
-        <div className="hud-slot slot-target curve-right"><TargetReadout frame={frame} /><LoadoutPanel /></div>
-        <div className="hud-slot slot-rail curve-right"><StatusRail frame={frame} throttling /></div>
+        <div className="hud-slot slot-reticle" style={{ opacity: calm ? 0.3 : 1 }}><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></div>
+        {!ghost && <div className="hud-slot slot-target curve-right"><TargetReadout frame={frame} /><LoadoutPanel /></div>}
+        {!ghost && <div className="hud-slot slot-rail curve-right"><StatusRail frame={frame} throttling /></div>}
+        {ghost && (
+          <div className="hud-slot slot-ghost-legend" data-testid="ghost-legend">
+            <span className="gl red">APEX</span>{!calm && <span className="gl blue">GLIDE</span>}<span className="gl yellow">STREAM</span>
+            <span className="gl-count" data-testid="focus-count">{frame.hud.focus_ids.length}/{calm ? 2 : FOCUS_LIMIT}</span>
+          </div>
+        )}
+        {calm && <div className="hud-slot slot-breath"><BreathPacer /></div>}
         <div className="hud-slot slot-progress"><CorridorProgress frame={frame} interval={controls.interval} /></div>
+        <div className="zone-badge" data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
         {!frame.hud.observer_filter && <div className="raw-warning" data-testid="raw-feed-warning">RAW ANOMALY FEED · OBSERVER FILTER OFFLINE</div>}
       </div>
       <VisorFrame overload={tier === 2} scanlines />
@@ -105,7 +130,7 @@ export default function HallwayPage() {
         ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {playing ? "AUTO-ADVANCING" : "MANUAL"} · ALL ENTITY DATA SIMULATED
       </div>
       <HallwayPanel open={panel === "controls"} onClose={closePanel} controls={controls} setControls={setControls}
-        playing={playing} setPlaying={setPlaying} onReset={onReset} />
+        playing={playing} setPlaying={setPlaying} onReset={onReset} onZone={onZone} />
       <DataFeed open={panel === "feed"} onClose={closePanel} frame={frame} streaming={streaming} setStreaming={setStreaming} streamStatus={streamStatus} />
     </div>
   );

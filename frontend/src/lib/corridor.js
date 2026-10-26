@@ -48,17 +48,51 @@ export const ENTITY_TYPES = {
   },
 };
 
-const ROSTER = [
-  { id: "P-01", type: "pygmy", lane: -0.9, offset: 0 },
-  { id: "P-02", type: "pygmy", lane: -0.25, offset: 2 },
-  { id: "P-03", type: "pygmy", lane: 0.45, offset: 1 },
-  { id: "P-04", type: "pygmy", lane: 1.0, offset: 3.5 },
-  { id: "N-01", type: "gnome", lane: 1.35, offset: 4 },
-  { id: "W-01", type: "wraith", lane: 0.35, offset: 7 },
-  { id: "N-02", type: "gnome", lane: -1.4, offset: 9 },
-  { id: "G-01", type: "golem", lane: -0.55, offset: 12 },
-  { id: "B-00", type: "boss", lane: 0, fixed: BOSS_DISTANCE },
-];
+const BOSS = { id: "B-00", type: "boss", lane: 0, fixed: BOSS_DISTANCE };
+const ROOM_IMG = (h) => `${IMG}${h}.jpeg`;
+
+export const ZONES = {
+  wards: {
+    name: "ZONE 1 · THE WARDS", short: "WARDS", jp: "病棟", accent: "#c8d4e6", tint: "rgba(150,175,205,0.10)",
+    img: CORRIDOR_IMG,
+    roster: [
+      { id: "P-01", type: "pygmy", lane: -0.9, offset: 0 }, { id: "P-02", type: "pygmy", lane: -0.25, offset: 2 },
+      { id: "P-03", type: "pygmy", lane: 0.45, offset: 1 }, { id: "P-04", type: "pygmy", lane: 1.0, offset: 3.5 },
+      { id: "N-01", type: "gnome", lane: 1.35, offset: 4 }, { id: "W-01", type: "wraith", lane: 0.35, offset: 7 },
+      { id: "N-02", type: "gnome", lane: -1.4, offset: 9 }, { id: "G-01", type: "golem", lane: -0.55, offset: 12 },
+    ],
+  },
+  mess: {
+    name: "ZONE 2 · MESS HALL", short: "MESS HALL", jp: "食堂", accent: "#d39a4a", tint: "rgba(120,170,60,0.14)",
+    img: ROOM_IMG("dc1c5f68bf74a04cb62aec3391f8abcc2f90e65a806c463b32e8abc03e0805fd"),
+    roster: [
+      { id: "W-01", type: "wraith", lane: -0.7, offset: 0 }, { id: "W-02", type: "wraith", lane: 0.8, offset: 5 },
+      { id: "P-01", type: "pygmy", lane: 0.2, offset: 2 }, { id: "P-02", type: "pygmy", lane: -0.3, offset: 3 },
+      { id: "W-03", type: "wraith", lane: 0.1, offset: 11 }, { id: "N-01", type: "gnome", lane: 1.4, offset: 8 },
+    ],
+  },
+  admin: {
+    name: "ZONE 3 · ADMINISTRATION", short: "ADMIN", jp: "管理棟", accent: "#a25cff", tint: "rgba(110,60,200,0.14)",
+    img: ROOM_IMG("afc9ecfeb786f07b373699aa6eddaa7d948d294a3aa816bf7422fcd4a19f8f58"),
+    roster: [
+      { id: "G-01", type: "golem", lane: -0.6, offset: 0 }, { id: "G-02", type: "golem", lane: 0.7, offset: 4 },
+      { id: "W-01", type: "wraith", lane: 0.1, offset: 8 }, { id: "G-03", type: "golem", lane: -0.1, offset: 12 },
+      { id: "N-01", type: "gnome", lane: -1.4, offset: 6 },
+    ],
+  },
+  boiler: {
+    name: "ZONE 4 · BOILER ROOM", short: "BOILER", jp: "ボイラー室", accent: "#e0553c", tint: "rgba(200,70,30,0.14)",
+    img: ROOM_IMG("df38a163f5463003aa1381eb7017ce352b4913be9afebf1a075ae25fb5f8f73b"),
+    roster: [
+      { id: "N-01", type: "gnome", lane: -1.2, offset: 0 }, { id: "N-02", type: "gnome", lane: 1.2, offset: 2 },
+      { id: "N-03", type: "gnome", lane: -0.4, offset: 6 }, { id: "N-04", type: "gnome", lane: 0.6, offset: 9 },
+      { id: "G-01", type: "golem", lane: 0.1, offset: 13 }, { id: "P-01", type: "pygmy", lane: -0.8, offset: 4 },
+    ],
+  },
+};
+
+export const FOCUS_LIMIT = 3;
+export const CALM_HR = 110;
 
 export const STAGES = ["DETECTED", "CLASSIFYING", "IDENTIFIED", "TRACKING", "PROXIMITY"];
 export const stageOf = (d) => (d > 80 ? "DETECTED" : d > 60 ? "CLASSIFYING" : d > 40 ? "IDENTIFIED" : d > 20 ? "TRACKING" : "PROXIMITY");
@@ -67,7 +101,7 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
-  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0,
+  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "ghost", audio: false,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
@@ -130,7 +164,8 @@ export function makeCorridorSim() {
     if (Math.abs(c.distance - lead) < 0.3) lead = c.distance;
 
     const imu = headMotion(c, t);
-    const entities = ROSTER.filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t));
+    const zone = ZONES[c.zone];
+    const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t));
     const hostile = entities.filter((e) => e.disposition === "HOSTILE");
     const nearest = hostile.reduce((m, e) => Math.min(m, e.distance_m), CORRIDOR_LENGTH);
     const maxThreat = hostile.reduce((m, e) => Math.max(m, e.threat), 0);
@@ -145,15 +180,27 @@ export function makeCorridorSim() {
 
     if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 1.5);
 
+    const hr = 64 + stress * 75 + Math.sin(t * 1.9) * 1.5;
+    const ghost = c.mode === "ghost";
+    const calm = ghost && hr >= CALM_HR;
+    // Dead Core limit: only the top-N hostiles by threat x proximity get full attention
+    const focus = hostile
+      .filter((e) => e.stage !== "DETECTED")
+      .sort((a, b) => b.threat * (1.2 - b.distance_m / 100) - a.threat * (1.2 - a.distance_m / 100))
+      .slice(0, calm ? 2 : FOCUS_LIMIT)
+      .map((e) => e.id);
+
     return {
       schema: "g14.hud.v1",
       seq,
       t_ms: Date.now(),
       source: "SIMULATOR",
       scene: "asylum_corridor",
+      zone: c.zone,
       lead_m: r(lead, 1),
       eeg,
       imu,
+      bio: { sensor: "MAX30102", heart_rate_bpm: Math.round(hr), spo2: Math.round(98 - stress * 3) },
       scan: { sensor: "TSL1401CL", resonance: r(clamp(0.25 + 0.65 * proxN)), stability: r(stability), entities },
       hud: {
         cognitive_load: r(load),
@@ -162,6 +209,9 @@ export function makeCorridorSim() {
         stable_zone: stability >= 0.8,
         observer_filter: c.filter,
         boss_observation: r(observe / 100, 3),
+        mode: c.mode,
+        calm_assist: calm,
+        focus_ids: focus,
       },
     };
   };

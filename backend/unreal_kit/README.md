@@ -43,6 +43,13 @@ Stages by distance: >80 m DETECTED, >60 CLASSIFYING, >40 IDENTIFIED, >20 TRACKIN
 Use `Type` to pick which pre-rendered overlay mesh/material to spawn; swap to it at IDENTIFIED (the observer filter "resolve").
 In the corridor the lateral screen position is `LaneM / DistanceM` (pinhole), which `ProjectEntity` already covers via the bearing.
 
+## 3-Vector Ghost mode (cognitive-load fix)
+`hud.mode` = "ghost" | "full". In ghost mode render only the entities in `hud.focus_ids` (max 3, 2 under Calm Assist),
+replace text with: RED floor zone + brake line at the nearest focus threat (critical apex), BLUE glide path up the
+opposite wall/ceiling (hidden under Calm Assist), YELLOW centreline "nanite stream". Use edge glows for direction and
+`bio.heart_rate_bpm` (MAX30102) >= 110 to set `hud.calm_assist` (show a 4-4-4-4 box-breathing pacer, fade the rest).
+Spline Mesh Components are a good fit for the three vectors in UE5.
+
 ## Later: real hardware
 Your ESP32/Teensy can publish the same JSON either by `POST /api/telemetry` or a WebSocket
 to `/api/ws/hud?role=publisher`, or you can point `ServerUrl` straight at a WebSocket server on the ESP32.

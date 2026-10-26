@@ -100,6 +100,19 @@ struct FG14HudState
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") bool bStableZone = false;
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") bool bObserverFilter = true;
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") float BossObservation = 0.f; // 0..1
+	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") FString Mode;                // "ghost" | "full"
+	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") bool bCalmAssist = false;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") TArray<FString> FocusIds;    // Dead Core: max 3 tracked
+};
+
+// MAX30102 — heart rate / SpO2
+USTRUCT(BlueprintType)
+struct FG14BioData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Bio") int32 HeartRateBpm = 0;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Bio") int32 SpO2 = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -115,4 +128,6 @@ struct FG14HudFrame
 	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14IMUData IMU;
 	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14ScanData Scan;
 	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14HudState Hud;
+	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14BioData Bio;
+	UPROPERTY(BlueprintReadOnly, Category = "G14") FString Zone;
 };

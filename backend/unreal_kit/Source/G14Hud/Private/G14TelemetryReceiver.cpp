@@ -254,6 +254,16 @@ bool AG14TelemetryReceiver::ParseFrame(const FString& Json, FG14HudFrame& Out)
 		Out.Hud.bObserverFilter = true;
 		Hud->TryGetBoolField(TEXT("observer_filter"), Out.Hud.bObserverFilter);
 		Out.Hud.BossObservation = G14Json::Num(Hud, TEXT("boss_observation"));
+		Hud->TryGetStringField(TEXT("mode"), Out.Hud.Mode);
+		Hud->TryGetBoolField(TEXT("calm_assist"), Out.Hud.bCalmAssist);
+		Hud->TryGetStringArrayField(TEXT("focus_ids"), Out.Hud.FocusIds);
+	}
+
+	Root->TryGetStringField(TEXT("zone"), Out.Zone);
+	if (const TSharedPtr<FJsonObject> Bio = G14Json::Obj(Root, TEXT("bio")))
+	{
+		Out.Bio.HeartRateBpm = static_cast<int32>(G14Json::Num(Bio, TEXT("heart_rate_bpm")));
+		Out.Bio.SpO2 = static_cast<int32>(G14Json::Num(Bio, TEXT("spo2")));
 	}
 	return true;
 }

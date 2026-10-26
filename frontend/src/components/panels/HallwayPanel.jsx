@@ -1,11 +1,11 @@
 import { memo } from "react";
 import { X, ChevronsDown, ChevronsUp, Play, Pause, RotateCcw } from "lucide-react";
 import { SliderRow, ToggleRow } from "@/components/panels/SensorPanel";
-import { ENTITY_TYPES, stepCloser, stepBack } from "@/lib/corridor";
+import { ENTITY_TYPES, ZONES, stepCloser, stepBack } from "@/lib/corridor";
 
 const MOODS = ["NEUTRAL", "SUBMITTED", "HOSTILE"];
 
-export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset }) => {
+export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset, onZone }) => {
   const set = (k, v) => setControls((c) => ({ ...c, [k]: v }));
   return (
     <aside className={`drawer drawer-right ${open ? "open" : ""}`} data-testid="hallway-panel">
@@ -14,6 +14,24 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
         <button className="icon-btn" onClick={onClose} data-testid="hallway-panel-close-button"><X size={16} /></button>
       </div>
       <div className="drawer-body">
+        <div className="group-title">HUD MODE <span className="jp">表示モード</span></div>
+        <div className="preset-row two">
+          <button className={`preset-btn ${controls.mode === "ghost" ? "active-cross" : ""}`} onClick={() => set("mode", "ghost")} data-testid="mode-ghost-button">3-VECTOR GHOST</button>
+          <button className={`preset-btn ${controls.mode === "full" ? "active-cross" : ""}`} onClick={() => set("mode", "full")} data-testid="mode-full-button">FULL ANALYST</button>
+        </div>
+        <div className="hint-text">Ghost: max 3 threats, colour vectors instead of text, edge glows for direction. Calm Assist kicks in above 110 BPM.</div>
+        <ToggleRow id="audio-cues" label="Spatial audio pings (bone conduction)" checked={controls.audio} onChange={(v) => set("audio", v)} />
+
+        <div className="group-title">ZONE ROOM <span className="jp">区域</span></div>
+        <div className="zone-grid">
+          {Object.entries(ZONES).map(([k, z]) => (
+            <button key={k} className={`zone-btn ${controls.zone === k ? "active" : ""}`} style={{ "--zone": z.accent }} onClick={() => onZone(k)} data-testid={`zone-${k}-button`}>
+              <span className="zb-img" style={{ backgroundImage: `url(${z.img})` }} />
+              <span className="zb-name">{z.short}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="group-title">APPROACH <span className="jp">接近</span></div>
         <div className="preset-row two">
           {[10, 20].map((i) => (
