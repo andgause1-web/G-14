@@ -30,8 +30,8 @@ export const GhostVectors = ({ frame }) => {
     return [away * 0.45 * Math.sin((Math.PI / 2) * (i / 15)), 0, z];
   });
   const red = n && [
-    [n.lane_m - 0.9, 0, Math.max(3, n.distance_m - 3)], [n.lane_m + 0.9, 0, Math.max(3, n.distance_m - 3)],
-    [n.lane_m + 0.7, 0, n.distance_m + 1.5], [n.lane_m - 0.7, 0, n.distance_m + 1.5],
+    [n.lane_m - 1.2, 0, Math.max(3, n.distance_m - 4)], [n.lane_m + 1.2, 0, Math.max(3, n.distance_m - 4)],
+    [n.lane_m + 0.9, 0, n.distance_m + 2], [n.lane_m - 0.9, 0, n.distance_m + 2],
   ];
   const brakeZ = n && Math.max(2.6, n.distance_m - 5);
   const blue = n && [
@@ -55,13 +55,22 @@ export const GhostVectors = ({ frame }) => {
 export const GhostTags = ({ frame }) => {
   const W = window.innerWidth;
   const H = window.innerHeight;
-  return focusEntities(frame).map((e) => {
+  const tags = focusEntities(frame).map((e) => {
     const T = ENTITY_TYPES[e.type];
     const [x, feet] = toScreen([e.lane_m, T.float, e.distance_m], frame.imu, W, H);
     const h = Math.min((H * 0.94 * T.height) / e.distance_m, H * 0.7);
+    return { e, T, x, y: feet - Math.max(h, 6) - 30 };
+  });
+  // keep the max-3 tags readable when entities bunch up near the vanishing point
+  const placed = [];
+  tags.sort((a, b) => b.y - a.y).forEach((t) => {
+    while (placed.some((p) => Math.abs(p.x - t.x) < 60 && Math.abs(p.y - t.y) < 24)) t.y -= 24;
+    placed.push(t);
+  });
+  return tags.map(({ e, T, x, y }) => {
     const rank = frame.hud.focus_ids.indexOf(e.id) + 1;
     return (
-      <div key={e.id} className={`ghost-tag st-${e.stage.toLowerCase()}`} style={{ left: x, top: feet - Math.max(h, 6) - 30, "--ent": T.color }} data-testid={`ghost-tag-${e.id}`}>
+      <div key={e.id} className={`ghost-tag st-${e.stage.toLowerCase()}`} style={{ left: x, top: y, "--ent": T.color }} data-testid={`ghost-tag-${e.id}`}>
         <span className="gt-rank">{rank}</span>
         <span className="gt-dist">{Math.round(e.distance_m)}</span>
       </div>

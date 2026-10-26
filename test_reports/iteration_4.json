@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only test of the /hallway 3-Vector Ghost HUD, Zone Rooms and Calm Assist at 1920x1080. All 7 requested feature areas pass with no page or console errors. GHOST is the default mode: mode-ghost-button has active-cross and the root has mode-ghost. Ghost shows ghost-vectors, vitals-chip/heart-rate-value, ghost-legend focus-count '0/3' at 100 m and periphery-cues. It shows no corridor-label-*, event log, loadout or target readout. At 40 m (3x CLOSER) there are 3 ghost tags (P-01, W-01, G-01), focus-count is 3/3, vector-yellow, vector-red and vector-blue are all present, and non-focus entities (P-02/P-03/P-04/N-01/N-02) have is-dim. Calm Assist (composure 0, lead 0): HR is 138-140, breath-pacer is visible, focus-count is 2/2 with 2 tags, vector-blue is gone, the GLIDE legend is hidden, the root has calm-assist and periphery-bottom is 1. Raising composure to 100 drops HR to 82, removes breath-pacer and brings back 3/3 and vector-blue. Calm Assist does not trigger in FULL mode. The audio toggle turns on and off with no errors. Zones: mess, admin, boiler and wards each set the correct data-zone, badge text and background image, reset lead to 100, and show exactly the expected rosters, with B-00 always present. FULL mode shows 6 callouts, event log, hud-stasis-meter, target readout and loadout, and ghost-vectors/vitals/legend/periphery are gone. Switching back to GHOST restores them. Regression: event log stage/checkpoint rows, observer filter raw warning and log entries, wolf-tone PATTERN DISRUPTED and gnome HOSTILE all work; '/' loads; /unreal lists G14HudTypes. The data feed JSON has zone, bio{sensor:MAX30102, heart_rate_bpm, spo2}, hud.mode, hud.calm_assist and hud.focus_ids. One run saw a transient 'Preview Unavailable' page; it worked on retry (infra, not app).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "GhostTags", "issue": "At ~40 m the 3 focus tags (rank+distance chips) stack on top of each other near the corridor centre (52/47/40 overlap) because they are placed at entity screen x with no collision avoidance. This is minor but works against the 'reduce cognitive load' goal.", "selector": "[data-testid^=ghost-tag-]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Ghost in BOILER zone", "issue": "Gnomes are NEUTRAL by default and are excluded from focus (only HOSTILE entities qualify), so the boiler room (4 gnomes) shows few or no focus vectors until gnome mood is set to HOSTILE. This is likely intentional; just noting it.", "affected_selectors": ["[data-testid=vector-red]"]}
+    ],
+    "design_issues": [
+      {"screen": "Hallway ghost mode", "issues": ["The red APEX zone polygon is very small at distance (hard to see at 40 m)", "At 0 m in Calm Assist the throttle tier is still 2 (red visor overload frame), which may undermine the calming intent", "The ghost legend sits bottom-right and is hidden under the open CORRIDOR drawer"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: de-overlap the ghost tags (offset vertically when screen x values are close)",
+    "Optional: suppress or soften the tier-2 overload visor styling while calm_assist is active",
+    "Optional: enlarge the red apex zone / brake line at long range for visibility"
+  ],
+  "critical_code_review_comments": [
+    "useSpatialCue runs an effect on every frame and lazily creates an AudioContext. Browsers may keep the context 'suspended' unless it is created or resumed in a user gesture; the toggle onChange should call ctx.resume() so pings are actually audible",
+    "GhostVectors/GhostTags/Periphery read window.innerWidth/innerHeight during render (same pattern as before)",
+    "The heart-rate sine jitter (±1.5) near 110 BPM can make Calm Assist flicker on and off; consider hysteresis (e.g. on at 110, off at 104)"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested features"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The panel starts closed; open it with open-sensor-panel-button. Radix sliders: focus [data-testid=slider-X] [role=slider] and press Home/End. The stasis testid is hud-stasis-meter. Calm Assist triggers with composure 0 at lead 0 (HR ~139); composure 100 gives HR ~82. Allow 4 s per step and ~6 s for a 100->0 slider jump."
+}

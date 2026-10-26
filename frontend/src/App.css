@@ -405,7 +405,7 @@
 .vitals-chip.is-hot .vc-hr b { color: var(--red); }
 @keyframes heartbeat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.3); } 30% { transform: scale(1); } }
 
-.slot-ghost-legend { bottom: 24%; right: 7%; display: flex; gap: 8px; align-items: center; }
+.slot-ghost-legend { bottom: 20.5%; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; }
 .gl { font-size: 9px; letter-spacing: 0.2em; padding-left: 14px; position: relative; color: rgba(207, 239, 255, 0.7); }
 .gl::before { content: ""; position: absolute; left: 0; top: 50%; width: 10px; height: 3px; transform: translateY(-50%); }
 .gl.red::before { background: var(--red); box-shadow: 0 0 6px var(--red); }
@@ -413,10 +413,12 @@
 .gl.yellow::before { background: #ffd43b; box-shadow: 0 0 6px #ffd43b; }
 .gl-count { font-family: "Rajdhani", sans-serif; font-size: 14px; font-weight: 700; color: #fff; margin-left: 6px; }
 
-.slot-breath { bottom: 24%; left: 50%; transform: translateX(-50%); }
+.slot-breath { bottom: 25%; left: 50%; transform: translateX(-50%); }
 .breath-pacer { position: relative; width: 70px; height: 70px; display: grid; place-items: center; }
 .bp-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--green); box-shadow: 0 0 14px rgba(0, 255, 157, 0.4), inset 0 0 14px rgba(0, 255, 157, 0.2); animation: box-breath 16s ease-in-out infinite; }
 .bp-text { font-size: 8px; letter-spacing: 0.3em; color: var(--green); }
 @keyframes box-breath { 0% { transform: scale(0.45); } 25%, 50% { transform: scale(1); } 75%, 100% { transform: scale(0.45); } }
 .calm-assist .world-tint { background: radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0, 10, 8, 0.75) 80%); }
 .calm-assist .cor-label, .calm-assist .slot-compass { opacity: 0.2 !important; }
+.visor-root.calm-assist .hud-layer { animation: none; }
+.vec-red-zone { stroke-width: 3; }

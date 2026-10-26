@@ -27,6 +27,13 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Callout labels in measured, non-overlapping columns with leader lines; event log; corridor progress bar; frames streamed with scene/type/stage/disposition (Unreal kit types updated)
 - Tested: iteration_3 pass + fixes (drawer under top bar, label overlap, checkpoint timing, stage hysteresis, reset, filter-off labels)
 
+## Zone Rooms + 3-Vector Ghost mode — added 2026-06
+- Zones: Wards (silver), Mess Hall (copper/green), Administration (violet), Boiler Room (rust red) with own backdrops, tints and rosters; boss at the end of each
+- Ghost HUD (default, from RAIDEN-V "Dead Core" sheet): max 3 focus threats (2 under Calm Assist), no text callouts; RED apex zone + brake line, BLUE wall/ceiling glide path, YELLOW nanite-stream centreline; rank+distance tags; peripheral edge glows; optional stereo-panned audio pings
+- MAX30102 heart rate simulated from proximity × composure; ≥110 BPM → Calm Assist (box-breathing pacer, blue hidden, overload frame suppressed)
+- Full Analyst mode keeps the detailed HUD; Unreal types gained Bio, Zone, Mode, CalmAssist, FocusIds
+- Tested: iteration_4 pass; fixed tag stacking, bigger apex zone, legend placement, calm-assist overload suppression
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data
