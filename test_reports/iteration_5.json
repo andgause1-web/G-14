@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only test at 1920x1080 of Visor physics, Calm-by-default escalation, Gaze-reveal and a FULL ANALYST regression. All requested features work, with no console or page errors. VISOR: visor-refraction, visor-reflection (portrait img loaded, naturalWidth 1024), visor-breath-fog and visor-condensation are all inside visor-frame on both '/' and '/hallway', with no layout breakage. Condensation opacity is 0.25 at lead 100 (HR 68) and 0.85 at composure 0 / lead 0 (HR 138). Fog --fog goes from 0.35 to 0.9 and breath duration from 5s to 2.14s. CALM: at load, data-level=0, there are no tags, no ghost-vectors and no legend, and slot-vitals, slot-telemetry and slot-radar are all at 0.04. Step to 80: still level 0. Step to 60: level 1 (PERIPHERAL), periphery-flash-right then periphery-flash-left appear, no tags or vectors. Step to 40: still level 1, because focus entities are still more than 40 m from the operator. Step to 20: level 2 (AUDIO), 3 tags, vector-yellow and ghost-legend present, no vector-red or vector-blue. Lead 0: level 3 (OVERLAY), vector-red and vector-blue present. With calm assist (composure 0) at lead 0: level 3, 2 tags, vector-red present, vector-blue absent, slot-vitals forced to 1. GAZE slider: -100 gives vitals 1 / radar 1 / telemetry 0.04 and gaze-dot at 5%. +100 gives telemetry 1 / vitals 0.04 / radar 0.04 and dot at 95%. 0 gives all 0.04. -40 gives 0.28 (smooth ramp). Mouse gaze toggle: mouse at x=5 gives vitals/radar 1, x=1915 gives telemetry 1, centre gives all 0.04, and the dot follows (5.45% / 94.55% / 50%). FULL ANALYST: 6 corridor-label callouts, hud-stasis-meter, event log and target/loadout panels visible, with slot-stasis/events/target/rail/radar opacity 1. Ghost elements (alert-level, ghost-vectors, slot-vitals, gaze-dot, periphery-cues) are absent.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Calm escalation thresholds", "issue": "alert_level is based on the nearest focus ENTITY distance, not the lead distance. At lead 40 the level stays 1 (PERIPHERAL), and at lead 20 it is only 2 (AUDIO) because the nearest entity is about 21 m away. OVERLAY (3) only appears at lead 0. This matches the code's intent but not the review text '<=40 m -> AUDIO, <=20 m -> OVERLAY' if that meant lead distance. Confirm which behaviour is intended.", "affected_selectors": ["[data-testid=alert-level]"]}
+    ],
+    "design_issues": [
+      {"screen": "Hallway ghost level 0", "issues": ["The QUIET alert pips at bottom centre are nearly invisible. This is intended for calm mode, but users may not find them."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: clarify or adjust the alert thresholds if they should key off lead distance rather than nearest focus entity distance"
+  ],
+  "critical_code_review_comments": [
+    "Periphery runs a useEffect with no dependency array (every render/frame). It is cheap, but it calls setFlash, which triggers another render whenever a stage changes. It works, but consider keying on the frame.",
+    "The reveal() threshold starts at gaze 30%, so slider values from -30 to 30 show nothing. This is fine, but there is no visual hint that the edges reveal.",
+    "GhostVectors/GhostTags/Periphery still read window.innerWidth during render (no resize state)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested features (one threshold-semantics note)"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Slider testids: slider-gaze, slider-distance, slider-composure, with value at slider-value-<id>. Toggles: toggle-mouse-gaze, toggle-audio-cues. Full-mode event log and target readout have no event-log/target-readout testids; use .slot-events/.slot-target. Ghost tag textContent is rank+distance concatenated (e.g. '36' = rank 3, 6 m). Slider Home on distance goes to 0; wait about 7 s for the tween."
+}

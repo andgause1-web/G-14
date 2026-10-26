@@ -34,6 +34,12 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Full Analyst mode keeps the detailed HUD; Unreal types gained Bio, Zone, Mode, CalmAssist, FocusIds
 - Tested: iteration_4 pass; fixed tag stacking, bigger apex zone, legend placement, calm-assist overload suppression
 
+## Visor physics + calm-by-default + gaze reveal — added 2026-06
+- VisorFrame (both pages): edge refraction blur, dark curved bevel, chromatic fringe, specular streaks, faint mirrored face reflection, breath fog (rate + density from heart rate), corner condensation
+- Ghost alert ladder (hud.alert_level): 0 QUIET (nothing but a faint dot reticle) → 1 PERIPHERAL (edge glow + one-shot flash on change, focus >40 m) → 2 AUDIO (pings + rank tags + yellow stream, ≤40 m) → 3 OVERLAY (all vectors, radar, ≤20 m); based on nearest focus entity distance
+- Gaze reveal: slider or mouse; left = vitals ring + radar + zone, right = telemetry column + progress; fade 450 ms
+- Tested: iteration_5 all pass
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data
