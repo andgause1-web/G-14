@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import { FOV_H, FOV_V, clamp } from "@/lib/sim";
 import { ENTITY_TYPES } from "@/lib/corridor";
@@ -21,6 +21,8 @@ export const GhostVectors = ({ frame }) => {
   const W = window.innerWidth;
   const H = window.innerHeight;
   const { imu, hud } = frame;
+  if (hud.alert_level < 2) return null;
+  const full = hud.alert_level >= 3;
   const focus = focusEntities(frame);
   const n = focus.reduce((m, e) => (!m || e.distance_m < m.distance_m ? e : m), null);
   const away = n ? (n.lane_m >= 0 ? -1 : 1) : 0;
@@ -41,13 +43,13 @@ export const GhostVectors = ({ frame }) => {
   return (
     <svg className="ghost-vectors" width="100%" height="100%" style={{ transform: `rotate(${-imu.roll_deg}deg)` }} data-testid="ghost-vectors">
       <path d={path(yellow, imu, W, H)} className="vec vec-yellow" data-testid="vector-yellow" />
-      {red && (
+      {red && full && (
         <>
           <path d={`${path(red, imu, W, H)} Z`} className="vec vec-red-zone" data-testid="vector-red" />
           <path d={path([[-1.5, 0, brakeZ], [1.5, 0, brakeZ]], imu, W, H)} className="vec vec-red-brake" />
         </>
       )}
-      {blue && !hud.calm_assist && <path d={path(blue, imu, W, H)} className="vec vec-blue" data-testid="vector-blue" />}
+      {blue && full && !hud.calm_assist && <path d={path(blue, imu, W, H)} className="vec vec-blue" data-testid="vector-blue" />}
     </svg>
   );
 };
@@ -55,6 +57,7 @@ export const GhostVectors = ({ frame }) => {
 export const GhostTags = ({ frame }) => {
   const W = window.innerWidth;
   const H = window.innerHeight;
+  if (frame.hud.alert_level < 2) return null;
   const tags = focusEntities(frame).map((e) => {
     const T = ENTITY_TYPES[e.type];
     const [x, feet] = toScreen([e.lane_m, T.float, e.distance_m], frame.imu, W, H);
@@ -80,15 +83,30 @@ export const GhostTags = ({ frame }) => {
 
 export const Periphery = ({ frame }) => {
   const W = window.innerWidth;
+  const level = frame.hud.alert_level;
+  const [flash, setFlash] = useState({ L: 0, R: 0 });
+  const sig = useRef({});
   let left = 0;
   let right = 0;
   let near = 0;
+  const sides = {};
   focusEntities(frame).forEach((e) => {
     const [x] = toScreen([e.lane_m, 0, e.distance_m], frame.imu, W, window.innerHeight);
-    const p = clamp(1 - e.distance_m / 60);
+    const p = clamp(1 - e.distance_m / 60) * (level <= 1 ? 0.5 : 1);
+    sides[e.id] = x < W / 2 ? "L" : "R";
     if (x < W * 0.42) left = Math.max(left, p);
     if (x > W * 0.58) right = Math.max(right, p);
     if (e.distance_m <= 20) near = Math.max(near, clamp(1 - e.distance_m / 20) + 0.3);
+  });
+  // one-shot flash on the side where something changed (new focus or new stage)
+  useEffect(() => {
+    const changed = { L: false, R: false };
+    frame.scan.entities.filter((e) => sides[e.id]).forEach((e) => {
+      if (sig.current[e.id] !== e.stage) changed[sides[e.id]] = true;
+      sig.current[e.id] = e.stage;
+    });
+    Object.keys(sig.current).forEach((id) => { if (!sides[id]) delete sig.current[id]; });
+    if (changed.L || changed.R) setFlash((f) => ({ L: f.L + (changed.L ? 1 : 0), R: f.R + (changed.R ? 1 : 0) }));
   });
   const speed = (p) => `${(1.8 - p * 1.4).toFixed(2)}s`;
   return (
@@ -96,9 +114,34 @@ export const Periphery = ({ frame }) => {
       <i className="pe pe-left" style={{ opacity: left, animationDuration: speed(left) }} data-testid="periphery-left" />
       <i className="pe pe-right" style={{ opacity: right, animationDuration: speed(right) }} data-testid="periphery-right" />
       <i className="pe pe-bottom" style={{ opacity: Math.min(1, near), animationDuration: speed(Math.min(1, near)) }} data-testid="periphery-bottom" />
+      {flash.L > 0 && <i key={`l${flash.L}`} className="pe-flash pe-flash-left" data-testid="periphery-flash-left" />}
+      {flash.R > 0 && <i key={`r${flash.R}`} className="pe-flash pe-flash-right" data-testid="periphery-flash-right" />}
     </div>
   );
 };
+
+const LEVELS = ["QUIET", "PERIPHERAL", "AUDIO", "OVERLAY"];
+
+export const AlertPips = ({ level }) => (
+  <div className={`alert-pips lv-${level}`} data-testid="alert-level" data-level={level}>
+    {LEVELS.map((l, i) => <i key={l} className={i <= level ? "on" : ""} />)}
+    <span>{LEVELS[level]}</span>
+  </div>
+);
+
+export const reveal = (gaze, side) => 0.04 + 0.96 * clamp((side * gaze / 100 - 0.3) / 0.4);
+
+export const TelemetryEdge = ({ frame }) => (
+  <div className="telemetry-edge" data-testid="telemetry-edge">
+    <div className="te-row"><span>LEAD</span><b>{Math.round(frame.lead_m)} m</b></div>
+    <div className="te-row"><span>SpO₂</span><b>{frame.bio.spo2}%</b></div>
+    <div className="te-row"><span>STASIS</span><b>{Math.round(frame.eeg.stasis_index * 100)}</b></div>
+    <div className="te-row"><span>COG LOAD</span><b>{Math.round(frame.hud.cognitive_load * 100)}</b></div>
+    <div className="te-row"><span>FOCUS</span><b>{frame.hud.focus_ids.length}</b></div>
+  </div>
+);
+
+export const GazeDot = ({ gaze }) => <i className="gaze-dot" style={{ left: `${50 + gaze * 0.45}%` }} data-testid="gaze-dot" />;
 
 export const BreathPacer = () => (
   <div className="breath-pacer" data-testid="breath-pacer">
@@ -135,6 +178,7 @@ export function useSpatialCue(frame, enabled) {
     if (!enabled) return;
     if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     const ctx = ctxRef.current;
+    if (ctx.state === "suspended") ctx.resume();
     frame.scan.entities
       .filter((e) => frame.hud.focus_ids.includes(e.id))
       .forEach((e) => {

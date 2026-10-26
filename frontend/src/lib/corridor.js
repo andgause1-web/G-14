@@ -101,7 +101,7 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
-  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "ghost", audio: false,
+  yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "ghost", audio: true, gaze: 0, mouseGaze: false,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
@@ -189,6 +189,10 @@ export function makeCorridorSim() {
       .sort((a, b) => b.threat * (1.2 - b.distance_m / 100) - a.threat * (1.2 - a.distance_m / 100))
       .slice(0, calm ? 2 : FOCUS_LIMIT)
       .map((e) => e.id);
+    const focusD = hostile.filter((e) => focus.includes(e.id)).map((e) => e.distance_m);
+    const nearestFocus = focusD.length ? Math.min(...focusD) : null;
+    // calm by default: quiet -> peripheral -> audio -> full overlay
+    const alert = !ghost ? 3 : nearestFocus == null ? 0 : nearestFocus > 40 ? 1 : nearestFocus > 20 ? 2 : 3;
 
     return {
       schema: "g14.hud.v1",
@@ -212,6 +216,7 @@ export function makeCorridorSim() {
         mode: c.mode,
         calm_assist: calm,
         focus_ids: focus,
+        alert_level: alert,
       },
     };
   };

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { FOV_H, FOV_V } from "@/lib/sim";
+import { FOV_H, FOV_V, OPERATOR } from "@/lib/sim";
 
 const CITY_IMG =
   "https://static.prod-images.emergentagent.com/jobs/e985c244-e4a3-4446-beff-f722650fda53/images/1b0658b651f13fff440d66889f45d8433b6bfdaf3e0dfa00a2252f42507854aa.jpeg";
@@ -31,19 +31,30 @@ export const WorldBackground = ({ frameRef }) => {
   );
 };
 
-export const VisorFrame = ({ overload, scanlines }) => (
-  <div className={`visor-frame ${overload ? "is-overload" : ""}`} data-testid="visor-frame">
-    {scanlines && <div className="scanlines" data-testid="visor-scanlines" />}
-    <div className="visor-vignette" />
-    <svg className="visor-mask" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-      <path
-        fillRule="evenodd"
-        fill="#020407"
-        d="M0,0 H1000 V1000 H0 Z M40,110 Q500,30 960,110 L990,800 Q500,1000 10,800 Z"
-      />
-      <path className="visor-edge" d="M40,110 Q500,30 960,110 L990,800 Q500,1000 10,800 Z" fill="none" />
-      <path className="visor-strip-red" d="M110,96 Q300,62 480,56" fill="none" />
-      <path className="visor-strip-cyan" d="M520,56 Q700,62 890,96" fill="none" />
-    </svg>
-  </div>
-);
+export const VisorFrame = ({ overload, scanlines, hr = 72 }) => {
+  const stress = Math.min(1, Math.max(0, (hr - 70) / 60));
+  const breath = (60 / (12 + stress * 16)).toFixed(2);
+  return (
+    <div className={`visor-frame ${overload ? "is-overload" : ""}`} data-testid="visor-frame">
+      <div className="visor-refract" data-testid="visor-refraction" />
+      <div className="visor-fringe" />
+      <div className="visor-reflect" data-testid="visor-reflection"><img src={OPERATOR.portrait} alt="" /></div>
+      <div className="visor-specular" />
+      <div className="visor-breath" style={{ animationDuration: `${breath}s`, "--fog": 0.35 + stress * 0.55 }} data-testid="visor-breath-fog" />
+      <div className="visor-condensation" style={{ opacity: 0.25 + stress * 0.6 }} data-testid="visor-condensation" />
+      {scanlines && <div className="scanlines" data-testid="visor-scanlines" />}
+      <div className="visor-vignette" />
+      <svg className="visor-mask" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+        <path
+          fillRule="evenodd"
+          fill="#020407"
+          d="M0,0 H1000 V1000 H0 Z M40,110 Q500,30 960,110 L990,800 Q500,1000 10,800 Z"
+        />
+        <path className="visor-bevel" d="M40,110 Q500,30 960,110 L990,800 Q500,1000 10,800 Z" fill="none" />
+        <path className="visor-edge" d="M40,110 Q500,30 960,110 L990,800 Q500,1000 10,800 Z" fill="none" />
+        <path className="visor-strip-red" d="M110,96 Q300,62 480,56" fill="none" />
+        <path className="visor-strip-cyan" d="M520,56 Q700,62 890,96" fill="none" />
+      </svg>
+    </div>
+  );
+};

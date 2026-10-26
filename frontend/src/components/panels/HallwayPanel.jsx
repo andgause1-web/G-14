@@ -21,6 +21,12 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
         </div>
         <div className="hint-text">Ghost: max 3 threats, colour vectors instead of text, edge glows for direction. Calm Assist kicks in above 110 BPM.</div>
         <ToggleRow id="audio-cues" label="Spatial audio pings (bone conduction)" checked={controls.audio} onChange={(v) => set("audio", v)} />
+        <div className="hint-text">Calm by default: quiet → peripheral flash (contact) → audio + stream line (≤40 m) → full vector overlay (≤20 m).</div>
+
+        <div className="group-title">GAZE REVEAL <span className="jp">視線</span></div>
+        <SliderRow id="gaze" label="Gaze ← left · right →" min={-100} max={100} value={controls.gaze} onChange={set} />
+        <ToggleRow id="mouse-gaze" label="Gaze follows mouse" checked={controls.mouseGaze} onChange={(v) => set("mouseGaze", v)} />
+        <div className="hint-text">Look left for vitals + radar, right for telemetry. They fade out when you look away.</div>
 
         <div className="group-title">ZONE ROOM <span className="jp">区域</span></div>
         <div className="zone-grid">

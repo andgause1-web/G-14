@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
 import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT } from "@/lib/corridor";
-import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue } from "@/components/corridor/GhostHud";
+import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue, AlertPips, TelemetryEdge, GazeDot, reveal } from "@/components/corridor/GhostHud";
 import { useSimulation } from "@/hooks/useSimulation";
 import { VisorFrame } from "@/components/hud/VisorFrame";
 import { CorridorBackground, CorridorEntityLayer } from "@/components/corridor/CorridorScene";
@@ -85,46 +85,59 @@ export default function HallwayPage() {
   const zone = ZONES[controls.zone];
   const ghost = controls.mode === "ghost";
   const calm = frame.hud.calm_assist;
-  useSpatialCue(frame, controls.audio);
+  const level = frame.hud.alert_level;
+  const [mouseGaze, setMouseGaze] = useState(0);
+  const gaze = controls.mouseGaze ? mouseGaze : controls.gaze;
+  const gL = ghost ? reveal(gaze, -1) : 1;
+  const gR = ghost ? reveal(gaze, 1) : 1;
+  useSpatialCue(frame, controls.audio && level >= 2);
+  const onMouseMove = useCallback((ev) => {
+    if (controls.mouseGaze) setMouseGaze(Math.round(((ev.clientX / window.innerWidth) * 2 - 1) * 100));
+  }, [controls.mouseGaze]);
   const onZone = useCallback((z) => {
     setPlaying(false);
     setControls((c) => ({ ...c, zone: z, distance: 100, resetKey: c.resetKey + 1 }));
   }, []);
 
   return (
-    <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""}`} style={{ "--zone": zone.accent }} data-testid="hallway-page">
+    <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
       <CorridorBackground frameRef={frameRef} zone={zone} />
       {ghost && <GhostVectors frame={frame} />}
       <CorridorEntityLayer frame={frame} tier={tier} />
       {ghost && <Periphery frame={frame} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
-        <div className="hud-slot slot-compass" style={{ opacity: ghost ? 0.35 : op("compass") }}><DynamicCompass frame={frame} /></div>
+        <div className="hud-slot slot-compass" style={{ opacity: ghost ? (level >= 3 ? 0.35 : 0.08) : op("compass") }}><DynamicCompass frame={frame} /></div>
         {ghost ? (
-          <div className="hud-slot slot-vitals"><VitalsChip frame={frame} /></div>
+          <>
+            <div className="hud-slot slot-vitals gaze-fade" style={{ opacity: Math.max(gL, calm ? 1 : 0) }} data-testid="slot-vitals"><VitalsChip frame={frame} /></div>
+            <div className="hud-slot slot-telemetry gaze-fade curve-right" style={{ opacity: gR }} data-testid="slot-telemetry"><TelemetryEdge frame={frame} /></div>
+            <GazeDot gaze={gaze} />
+          </>
         ) : (
           <>
             <div className="hud-slot slot-stasis curve-left" style={{ opacity: op("stasis") }}><StasisMeter frame={frame} frameRef={frameRef} /></div>
             <div className="hud-slot slot-events curve-left"><EventLog events={events} /></div>
           </>
         )}
-        <div className="hud-slot slot-radar curve-left" style={{ opacity: ghost ? 0.45 : op("radar") }}>
+        <div className="hud-slot slot-radar curve-left gaze-fade" style={{ opacity: ghost ? Math.max(gL, level >= 3 ? 0.45 : 0) : op("radar") }} data-testid="slot-radar">
           <RadarPanel frame={frame} frameRef={frameRef} maxRange={100} legend={CORRIDOR_LEGEND} />
         </div>
-        <div className="hud-slot slot-reticle" style={{ opacity: calm ? 0.3 : 1 }}><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></div>
+        <div className="hud-slot slot-reticle gaze-fade" style={{ opacity: calm ? 0.3 : ghost && level < 2 ? 0.2 : 1 }}><LissajousReticle frameRef={frameRef} crosshair={ghost && level < 2 ? "dot" : view.crosshair} opacity={view.crosshairOpacity / 100} /></div>
         {!ghost && <div className="hud-slot slot-target curve-right"><TargetReadout frame={frame} /><LoadoutPanel /></div>}
         {!ghost && <div className="hud-slot slot-rail curve-right"><StatusRail frame={frame} throttling /></div>}
-        {ghost && (
+        {ghost && level >= 2 && (
           <div className="hud-slot slot-ghost-legend" data-testid="ghost-legend">
-            <span className="gl red">APEX</span>{!calm && <span className="gl blue">GLIDE</span>}<span className="gl yellow">STREAM</span>
+            <span className="gl yellow">STREAM</span>{level >= 3 && <span className="gl red">APEX</span>}{level >= 3 && !calm && <span className="gl blue">GLIDE</span>}
             <span className="gl-count" data-testid="focus-count">{frame.hud.focus_ids.length}/{calm ? 2 : FOCUS_LIMIT}</span>
           </div>
         )}
+        {ghost && <div className="hud-slot slot-pips"><AlertPips level={level} /></div>}
         {calm && <div className="hud-slot slot-breath"><BreathPacer /></div>}
-        <div className="hud-slot slot-progress"><CorridorProgress frame={frame} interval={controls.interval} /></div>
-        <div className="zone-badge" data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
+        <div className="hud-slot slot-progress gaze-fade" style={{ opacity: ghost ? Math.max(gR, level >= 2 ? 0.5 : 0.06) : 1 }}><CorridorProgress frame={frame} interval={controls.interval} /></div>
+        <div className="zone-badge gaze-fade" style={{ opacity: ghost ? Math.max(gL, 0.12) : 1 }} data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
         {!frame.hud.observer_filter && <div className="raw-warning" data-testid="raw-feed-warning">RAW ANOMALY FEED · OBSERVER FILTER OFFLINE</div>}
       </div>
-      <VisorFrame overload={tier === 2 && !calm} scanlines />
+      <VisorFrame overload={tier === 2 && !calm} scanlines hr={frame.bio.heart_rate_bpm} />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">
         ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {playing ? "AUTO-ADVANCING" : "MANUAL"} · ALL ENTITY DATA SIMULATED
