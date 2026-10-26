@@ -1,5 +1,5 @@
-import { Brain } from "lucide-react";
 import { useCanvasLoop } from "@/hooks/useCanvasLoop";
+import { OPERATOR } from "@/lib/sim";
 
 const W = 186;
 const H = 30;
@@ -46,9 +46,13 @@ export const StasisMeter = ({ frame, frameRef }) => {
       </div>
       <div className="stasis-body">
         <div className="stasis-left">
-          <Brain className={`brain-icon ${stable ? "" : "is-alert"}`} strokeWidth={1} />
-          <div className="stasis-index" data-testid="stasis-index-value">{Math.round(stasis_index * 100)}</div>
-          <div className="micro">STASIS IDX</div>
+          <div className={`portrait ${stable ? "" : "is-alert"}`} data-testid="operator-portrait">
+            <img src={OPERATOR.portrait} alt="Operator portrait" />
+            <i className="portrait-scan" />
+            <span className="portrait-idx" data-testid="stasis-index-value">{Math.round(stasis_index * 100)}</span>
+          </div>
+          <div className="portrait-name" data-testid="operator-callsign">{OPERATOR.callsign}</div>
+          <div className="micro">{OPERATOR.rank}</div>
         </div>
         <div className="band-list">
           {BANDS.map((b) => (

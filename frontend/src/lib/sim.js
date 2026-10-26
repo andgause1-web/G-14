@@ -18,7 +18,24 @@ export const DEFAULT_VIEW = {
   layers: { entities: true, radar: true, reticle: true, stasis: true, compass: true },
   throttling: true,
   scanlines: true,
+  crosshair: "cross",
+  crosshairOpacity: 90,
 };
+
+export const OPERATOR = {
+  callsign: "AETHER-01",
+  unit: "G-14 OPERATOR",
+  rank: "VANGUARD",
+  portrait: "https://static.prod-images.emergentagent.com/jobs/e985c244-e4a3-4446-beff-f722650fda53/images/61eedf53fbadcc2550d76d329dd011795b218b492a9f6a1d751c4fa8a370dc7c.jpeg",
+};
+
+// Placeholder loadout; replace with real weapon/equipment data later
+export const LOADOUT = [
+  { key: "1", slot: "PRIMARY", name: "UNASSIGNED", icon: "crosshair", active: true },
+  { key: "2", slot: "SECONDARY", name: "UNASSIGNED", icon: "target" },
+  { key: "3", slot: "EQUIP A", name: "EMPTY", icon: "shield" },
+  { key: "4", slot: "EQUIP B", name: "EMPTY", icon: "box" },
+];
 
 export const FOV_H = 90;
 export const FOV_V = 56;

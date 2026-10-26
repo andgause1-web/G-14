@@ -59,7 +59,35 @@ function drawLissajous(ctx, c, R, a, b, phase, color, alpha) {
   ctx.restore();
 }
 
-export const LissajousReticle = ({ frameRef }) => {
+const dot = (ctx, c, r) => {
+  ctx.beginPath();
+  ctx.arc(c, c, r, 0, Math.PI * 2);
+  ctx.fill();
+};
+
+const CROSSHAIRS = {
+  dot: (ctx, c, lock) => dot(ctx, c, lock ? 3.2 : 2.6),
+  cross: (ctx, c, lock) => {
+    const gap = lock ? 6 : 9;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(c + dx * gap, c + dy * gap);
+      ctx.lineTo(c + dx * (gap + 16), c + dy * (gap + 16));
+      ctx.stroke();
+    });
+    dot(ctx, c, 1.8);
+  },
+  circle: (ctx, c, lock) => {
+    ctx.beginPath();
+    ctx.arc(c, c, lock ? 9 : 13, 0, Math.PI * 2);
+    ctx.stroke();
+    dot(ctx, c, 1.6);
+  },
+};
+
+export const CROSSHAIR_TYPES = Object.keys(CROSSHAIRS);
+
+export const LissajousReticle = ({ frameRef, crosshair, opacity }) => {
   const mix = useRef(0);
   const ref = useCanvasLoop((ctx, t) => {
     const f = frameRef.current;
@@ -91,25 +119,14 @@ export const LissajousReticle = ({ frameRef }) => {
     if (res >= 0.75) drawLissajous(ctx, c, R * 0.8, a + 2, a + 1, -t * 0.4, "#7ef3ff", 0.14 * (1 - m));
     if (m > 0.02) drawMetatron(ctx, c, c * 0.18, t, m * 0.22);
 
-    // crosshair: gapped lines + center dot, kept crisp above the faint pattern
-    const gap = lock ? 6 : 9;
-    const len = 16;
     ctx.save();
     ctx.strokeStyle = col;
+    ctx.fillStyle = col;
     ctx.shadowColor = col;
     ctx.shadowBlur = 4;
     ctx.globalAlpha = 0.9;
     ctx.lineWidth = 1.5;
-    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
-      ctx.beginPath();
-      ctx.moveTo(c + dx * gap, c + dy * gap);
-      ctx.lineTo(c + dx * (gap + len), c + dy * (gap + len));
-      ctx.stroke();
-    });
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.arc(c, c, 1.8, 0, Math.PI * 2);
-    ctx.fill();
+    (CROSSHAIRS[crosshair] || CROSSHAIRS.cross)(ctx, c, lock);
 
     const k = 12;
     const o = lock ? c - 46 : c - 30;
@@ -127,5 +144,5 @@ export const LissajousReticle = ({ frameRef }) => {
     ctx.restore();
   }, SIZE, SIZE);
 
-  return <canvas ref={ref} style={{ width: SIZE, height: SIZE }} data-testid="lissajous-reticle-canvas" />;
+  return <canvas ref={ref} style={{ width: SIZE, height: SIZE, opacity }} data-crosshair={crosshair} data-testid="lissajous-reticle-canvas" />;
 };

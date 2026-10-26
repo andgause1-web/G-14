@@ -6,7 +6,7 @@ import { EntityLayer } from "@/components/hud/EntityLayer";
 import { LissajousReticle } from "@/components/hud/LissajousReticle";
 import { StasisMeter } from "@/components/hud/StasisMeter";
 import { DynamicCompass } from "@/components/hud/DynamicCompass";
-import { RadarPanel, TargetReadout, StatusRail } from "@/components/hud/Panels";
+import { RadarPanel, TargetReadout, StatusRail, LoadoutPanel } from "@/components/hud/Panels";
 import { SensorPanel } from "@/components/panels/SensorPanel";
 import { DataFeed } from "@/components/panels/DataFeed";
 import { TopBar } from "@/components/TopBar";
@@ -37,8 +37,13 @@ export default function VisorPage() {
         <Layer show={L.compass} op={op("compass")} className="slot-compass" testId="slot-compass"><DynamicCompass frame={frame} /></Layer>
         <Layer show={L.stasis} op={op("stasis")} className="slot-stasis curve-left" testId="slot-stasis"><StasisMeter frame={frame} frameRef={frameRef} /></Layer>
         <Layer show={L.radar} op={op("radar")} className="slot-radar curve-left" testId="slot-radar"><RadarPanel frame={frame} frameRef={frameRef} /></Layer>
-        <Layer show={L.reticle} op={op("reticle")} className="slot-reticle" testId="slot-reticle"><LissajousReticle frameRef={frameRef} /></Layer>
-        <Layer show={L.reticle} op={op("reticle")} className="slot-target curve-right" testId="slot-target"><TargetReadout frame={frame} /></Layer>
+        <Layer show={L.reticle} op={op("reticle")} className="slot-reticle" testId="slot-reticle">
+          <LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} />
+        </Layer>
+        <div className="hud-slot slot-target curve-right">
+          {L.reticle && <div style={{ opacity: op("reticle") }} data-testid="slot-target"><TargetReadout frame={frame} /></div>}
+          <LoadoutPanel />
+        </div>
         <div className="hud-slot slot-rail curve-right"><StatusRail frame={frame} throttling={view.throttling} /></div>
         <div className="sys-line" data-testid="hud-system-line">
           G-14 // RIG v3.7 · SEQ {String(frame.seq).padStart(5, "0")} · LINK {streamStatus === "live" ? "STREAMING" : "LOCAL SIM"}

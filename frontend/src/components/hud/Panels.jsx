@@ -1,4 +1,29 @@
-import { threatLabel } from "@/lib/sim";
+import { Crosshair, Target, Shield, Box } from "lucide-react";
+import { threatLabel, LOADOUT } from "@/lib/sim";
+
+const LOADOUT_ICONS = { crosshair: Crosshair, target: Target, shield: Shield, box: Box };
+
+export const LoadoutPanel = () => (
+  <div className="hud-panel loadout" data-testid="hud-loadout">
+    <div className="panel-head">
+      <span>06 · LOADOUT</span>
+      <span className="jp">装備</span>
+    </div>
+    <div className="loadout-grid">
+      {LOADOUT.map((l) => {
+        const Icon = LOADOUT_ICONS[l.icon];
+        return (
+          <div key={l.key} className={`loadout-slot ${l.active ? "active" : ""}`} data-testid={`loadout-slot-${l.key}`}>
+            <span className="slot-key">{l.key}</span>
+            <Icon size={16} strokeWidth={1.2} />
+            <span className="slot-type">{l.slot}</span>
+            <span className="slot-name">{l.name}</span>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
 import { CymaticRadar } from "./CymaticRadar";
 import { CompassRose } from "./DynamicCompass";
 

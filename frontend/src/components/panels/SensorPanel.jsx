@@ -3,6 +3,7 @@ import { X, Zap, Waves, Flame } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { PRESETS } from "@/lib/sim";
+import { CROSSHAIR_TYPES } from "@/components/hud/LissajousReticle";
 
 const PRESET_BTNS = [
   { k: "calm", label: "CALM", icon: Waves },
@@ -70,6 +71,22 @@ export const SensorPanel = memo(({ open, onClose, controls, setControls, view, s
             )}
           </div>
         ))}
+        <div className="ctl-group">
+          <div className="group-title">CROSSHAIR <span className="jp">照準</span></div>
+          <div className="preset-row">
+            {CROSSHAIR_TYPES.map((c) => (
+              <button key={c} className={`preset-btn ${view.crosshair === c ? "active-cross" : ""}`}
+                onClick={() => setView((s) => ({ ...s, crosshair: c }))} data-testid={`crosshair-${c}-button`}>
+                {c.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="ctl-row" style={{ marginTop: 12 }}>
+            <div className="ctl-label"><span>Opacity %</span><b data-testid="slider-value-crosshairOpacity">{view.crosshairOpacity}</b></div>
+            <Slider data-testid="slider-crosshairOpacity" min={10} max={100} step={1} value={[view.crosshairOpacity]}
+              onValueChange={([v]) => setView((s) => ({ ...s, crosshairOpacity: v }))} />
+          </div>
+        </div>
         <div className="ctl-group">
           <div className="group-title">HUD LAYERS <span className="jp">表示層</span></div>
           {LAYERS.map(([id, label]) => (
