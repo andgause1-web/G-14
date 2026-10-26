@@ -234,6 +234,11 @@ bool AG14TelemetryReceiver::ParseFrame(const FString& Json, FG14HudFrame& Out)
 				Entity.ElevationDeg = G14Json::Num(E, TEXT("elevation_deg"));
 				Entity.DistanceM = G14Json::Num(E, TEXT("distance_m"));
 				Entity.Threat = G14Json::Num(E, TEXT("threat"));
+				E->TryGetStringField(TEXT("type"), Entity.Type);
+				E->TryGetStringField(TEXT("stage"), Entity.Stage);
+				E->TryGetStringField(TEXT("disposition"), Entity.Disposition);
+				Entity.LaneM = G14Json::Num(E, TEXT("lane_m"));
+				E->TryGetBoolField(TEXT("countered"), Entity.bCountered);
 				Out.Scan.Entities.Add(Entity);
 			}
 		}
@@ -246,6 +251,9 @@ bool AG14TelemetryReceiver::ParseFrame(const FString& Json, FG14HudFrame& Out)
 		Out.Hud.ThrottleTier = static_cast<int32>(G14Json::Num(Hud, TEXT("throttle_tier")));
 		Hud->TryGetBoolField(TEXT("target_lock"), Out.Hud.bTargetLock);
 		Hud->TryGetBoolField(TEXT("stable_zone"), Out.Hud.bStableZone);
+		Out.Hud.bObserverFilter = true;
+		Hud->TryGetBoolField(TEXT("observer_filter"), Out.Hud.bObserverFilter);
+		Out.Hud.BossObservation = G14Json::Num(Hud, TEXT("boss_observation"));
 	}
 	return true;
 }

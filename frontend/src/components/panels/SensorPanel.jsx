@@ -28,14 +28,14 @@ const GROUPS = [
 
 const LAYERS = [["entities", "Entity silhouettes"], ["reticle", "Lissajous targeting"], ["radar", "Cymatic radar"], ["stasis", "Stasis meter"], ["compass", "Dynamic compass"]];
 
-const SliderRow = ({ id, label, min, max, value, onChange }) => (
+export const SliderRow = ({ id, label, min, max, value, onChange }) => (
   <div className="ctl-row">
     <div className="ctl-label"><span>{label}</span><b data-testid={`slider-value-${id}`}>{value}</b></div>
     <Slider data-testid={`slider-${id}`} min={min} max={max} step={1} value={[value]} onValueChange={([v]) => onChange(id, v)} />
   </div>
 );
 
-const ToggleRow = ({ id, label, checked, onChange }) => (
+export const ToggleRow = ({ id, label, checked, onChange }) => (
   <label className="ctl-toggle">
     <span>{label}</span>
     <Switch data-testid={`toggle-${id}`} checked={checked} onCheckedChange={onChange} />

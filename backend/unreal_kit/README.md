@@ -36,6 +36,13 @@ Written for UE 5.3+. Not compiled or tested inside Unreal by the simulator — t
 Tier 1 fades compass + radar to 30%. Tier 2 fades them to 12% and the stasis meter to 35%.
 Entities and the reticle are never throttled. Use `GetElementOpacity()` to apply this.
 
+## Corridor scene (Hallway page)
+Frames from the Hallway page add optional fields: `scene: "asylum_corridor"`, `lead_m`, and per entity
+`type`, `stage`, `disposition`, `lane_m`, `countered`, plus `hud.observer_filter` and `hud.boss_observation`.
+Stages by distance: >80 m DETECTED, >60 CLASSIFYING, >40 IDENTIFIED, >20 TRACKING, else PROXIMITY. The boss is always OBSERVED.
+Use `Type` to pick which pre-rendered overlay mesh/material to spawn; swap to it at IDENTIFIED (the observer filter "resolve").
+In the corridor the lateral screen position is `LaneM / DistanceM` (pinhole), which `ProjectEntity` already covers via the bearing.
+
 ## Later: real hardware
 Your ESP32/Teensy can publish the same JSON either by `POST /api/telemetry` or a WebSocket
 to `/api/ws/hud?role=publisher`, or you can point `ServerUrl` straight at a WebSocket server on the ESP32.

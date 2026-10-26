@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { buildFrame, WS_HUD_URL } from "@/lib/sim";
 
-export function useSimulation(controls, streaming) {
+export function useSimulation(controls, streaming, builder = buildFrame) {
   const controlsRef = useRef(controls);
   controlsRef.current = controls;
-  const frameRef = useRef(buildFrame(controls, 0, 0));
+  const builderRef = useRef(builder);
+  const frameRef = useRef(builder(controls, 0, 0));
   const [frame, setFrame] = useState(frameRef.current);
   const [streamStatus, setStreamStatus] = useState("off");
   const wsRef = useRef(null);
@@ -16,7 +17,7 @@ export function useSimulation(controls, streaming) {
     let seq = 0;
     const t0 = performance.now();
     const loop = (now) => {
-      const f = buildFrame(controlsRef.current, (now - t0) / 1000, seq);
+      const f = builderRef.current(controlsRef.current, (now - t0) / 1000, seq);
       frameRef.current = f;
       const ws = wsRef.current;
       if (now - lastSend > 100) {

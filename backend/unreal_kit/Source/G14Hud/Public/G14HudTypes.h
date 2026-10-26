@@ -68,6 +68,14 @@ struct FG14Entity
 	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") float ElevationDeg = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") float DistanceM = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") float Threat = 0.f;       // 0..1
+	// Optional (corridor scene): pygmy | wraith | golem | gnome | boss
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") FString Type;
+	// Optional: DETECTED | CLASSIFYING | IDENTIFIED | TRACKING | PROXIMITY | OBSERVED
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") FString Stage;
+	// Optional: HOSTILE | NEUTRAL | SUBMITTED | DORMANT
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") FString Disposition;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") float LaneM = 0.f;        // lateral offset in metres
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Scan") bool bCountered = false;
 };
 
 // TSL1401CL multispectral scan + derived resonance values
@@ -90,6 +98,8 @@ struct FG14HudState
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") int32 ThrottleTier = 0;    // 0,1,2
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") bool bTargetLock = false;
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") bool bStableZone = false;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") bool bObserverFilter = true;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD") float BossObservation = 0.f; // 0..1
 };
 
 USTRUCT(BlueprintType)

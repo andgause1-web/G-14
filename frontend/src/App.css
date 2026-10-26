@@ -287,3 +287,71 @@
   .slot-radar, .slot-rail { display: none; }
   .brand .jp { display: none; }
 }
+
+/* ---------- corridor / hallway ---------- */
+.corridor-bg { position: absolute; inset: -8%; background-size: cover; background-position: center 50%; filter: saturate(0.7) brightness(0.72) contrast(1.1); will-change: transform; }
+.corridor-tint { background: radial-gradient(ellipse at 50% 50%, rgba(0, 30, 40, 0.0), rgba(2, 6, 10, 0.7) 78%); }
+.corridor-fog { position: absolute; inset: 0; background: radial-gradient(ellipse 30% 18% at 50% 50%, rgba(140, 190, 210, 0.08), transparent 70%); animation: fog-breathe 6s ease-in-out infinite; pointer-events: none; }
+@keyframes fog-breathe { 50% { opacity: 0.4; } }
+.raw-feed .corridor-bg { filter: saturate(0.4) brightness(0.6) hue-rotate(-20deg) contrast(1.3); animation: raw-shake 0.35s steps(2) infinite; }
+@keyframes raw-shake { 50% { transform: translate(2px, -1px) scale(1.19); } }
+
+.cor-ent { position: absolute; transform: translateX(-50%); transition: left 60ms linear, top 60ms linear, width 120ms linear, height 120ms linear; pointer-events: none; }
+.corridor-root .entity-layer { mix-blend-mode: screen; }
+.cor-img { width: 100%; height: 100%; object-fit: contain; transition: filter 900ms ease, opacity 900ms ease; filter: drop-shadow(0 0 6px var(--ent)) brightness(1.1) contrast(1.15); }
+.cor-ent.is-raw .cor-img { filter: blur(5px) grayscale(0.6) brightness(1.6) contrast(0.8); opacity: 0.55; animation: raw-warp 1.1s ease-in-out infinite; }
+.cor-ent.is-raw.st-detected .cor-img { opacity: 0.35; filter: blur(8px) brightness(2); }
+@keyframes raw-warp { 0%, 100% { transform: skewX(0) scaleY(1); } 33% { transform: skewX(6deg) scaleY(1.06); } 66% { transform: skewX(-5deg) scaleY(0.95); } }
+.cor-ent .br { border-color: var(--ent); width: 10px; height: 10px; }
+.cor-ent.is-hostile.st-proximity .br { border-color: var(--red); animation: alert-flash 0.6s steps(2) infinite; }
+.cor-blip { position: absolute; left: 50%; bottom: 0; width: 7px; height: 7px; transform: translate(-50%, 50%) rotate(45deg); border: 1px solid var(--ent); box-shadow: 0 0 8px var(--ent); animation: strip-pulse 1.4s infinite; }
+.callout-layer { position: absolute; inset: 0; z-index: 6; pointer-events: none; transform-origin: 50% 50%; }
+.callout-lines { position: absolute; inset: 0; overflow: visible; }
+.callout-lines polyline { fill: none; stroke-width: 1; opacity: 0.6; }
+.cor-label { position: absolute; width: 210px; padding: 5px 8px; font-size: 9px; letter-spacing: 0.1em; line-height: 1.55; color: #dff9ff; background: rgba(2, 6, 10, 0.6); border-left: 2px solid var(--ent); backdrop-filter: blur(4px); white-space: normal; transition: top 160ms ease-out; }
+.cor-label.side-L { border-left: none; border-right: 2px solid var(--ent); text-align: right; }
+.cor-label.side-L .cl-id { flex-direction: row-reverse; }
+.cor-label.side-T { text-align: center; border-left: none; border-top: 2px solid var(--ent); width: 230px; }
+.cor-label.st-proximity { border-color: var(--red); box-shadow: 0 0 12px rgba(255, 42, 75, 0.25); }
+.cl-id { color: var(--ent); display: flex; justify-content: space-between; gap: 8px; }
+.cl-stage { font-size: 8px; padding: 0 4px; border: 1px solid var(--ent); }
+.st-proximity .cl-stage { color: var(--red); border-color: var(--red); }
+.cl-name { font-family: "Rajdhani", sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.14em; color: #fff; }
+.cl-alias { font-size: 8px; color: rgba(207, 239, 255, 0.6); }
+.cl-raw { color: rgba(207, 239, 255, 0.7); }
+.cl-bar { height: 3px; background: rgba(255, 255, 255, 0.08); position: relative; margin: 3px 0; }
+.cl-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ent); box-shadow: 0 0 6px var(--ent); transition: width 200ms linear; }
+.cl-gold { color: var(--gold); }
+.cl-tactic { color: var(--amber); margin-top: 2px; }
+.cl-counter { color: var(--green); margin-top: 2px; }
+.disp-neutral { color: var(--amber) !important; }
+.disp-submitted { color: var(--green) !important; }
+.disp-hostile { color: var(--red) !important; }
+.disp-dormant { color: var(--gold) !important; }
+
+.slot-events { top: 42%; left: 6.5%; animation-delay: 350ms; }
+.event-log { width: 236px; padding: 7px 9px; }
+.event-log .panel-head { font-size: 10px; margin-bottom: 4px; }
+.ev-row { display: grid; grid-template-columns: 34px 1fr; gap: 6px; font-size: 8px; letter-spacing: 0.06em; line-height: 1.5; color: rgba(207, 239, 255, 0.75); animation: boot-in 400ms ease both; }
+.ev-d { color: rgba(126, 243, 255, 0.5); }
+.ev-alert { color: var(--red); }
+.ev-good { color: var(--green); }
+
+.slot-progress { bottom: 15.5%; left: 50%; transform: translateX(-50%); }
+.cor-progress { width: 460px; }
+.cp-head { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 0.2em; color: rgba(126, 243, 255, 0.6); margin-bottom: 4px; }
+.cp-head b { color: #fff; font-weight: 400; }
+.cp-track { position: relative; height: 10px; border-bottom: 1px solid var(--cyan-line); }
+.cp-mark { position: absolute; bottom: 0; width: 1px; height: 6px; background: rgba(0, 240, 255, 0.5); }
+.cp-mark i { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 7px; color: rgba(126, 243, 255, 0.5); }
+.cp-dot { position: absolute; bottom: -3px; width: 5px; height: 5px; border-radius: 50%; transform: translateX(-50%); box-shadow: 0 0 5px currentColor; transition: left 80ms linear; }
+.cp-dot.boss { width: 9px; height: 9px; bottom: -5px; border-radius: 0; transform: translateX(-50%) rotate(45deg); }
+.cp-op { position: absolute; bottom: -4px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--gold); transform: translateX(-50%); }
+.cp-lead { position: absolute; bottom: 0; width: 1px; height: 16px; background: var(--red); box-shadow: 0 0 6px var(--red); transition: left 80ms linear; }
+.corridor-root .sys-line { display: none; }
+.raw-warning { position: absolute; top: 19%; left: 50%; transform: translateX(-50%); font-size: 11px; letter-spacing: 0.3em; color: var(--red); padding: 4px 12px; border: 1px solid var(--red); background: rgba(40, 0, 8, 0.4); animation: alert-flash 0.8s steps(2) infinite; }
+
+.preset-row.two { grid-template-columns: repeat(2, 1fr); }
+.preset-row.step-row { margin: 8px 0 14px; }
+.preset-btn.full { width: 100%; margin-top: 2px; }
+.hint-text { font-size: 10px; line-height: 1.5; color: rgba(207, 239, 255, 0.5); margin: 4px 0 6px; }

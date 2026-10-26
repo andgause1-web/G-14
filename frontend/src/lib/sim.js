@@ -72,19 +72,29 @@ function buildEntities(c, t) {
   });
 }
 
-export function buildFrame(c, t, seq) {
-  const sway = c.autoSway;
-  const yaw = wrap180(c.yaw + (sway ? Math.sin(t * 0.31) * 9 + Math.sin(t * 1.3) * 1.2 : 0));
-  const pitch = c.pitch + (sway ? Math.sin(t * 0.53) * 1.8 : 0);
-  const roll = c.roll + (sway ? Math.sin(t * 0.71) * 1.4 : 0);
-
+export function eegFrom(raw, t) {
   const keys = ["delta", "theta", "alpha", "beta", "gamma"];
-  const jit = keys.map((k, i) => Math.max(0.5, c[k] * (1 + 0.08 * Math.sin(t * (1.7 + i * 0.9) + i))));
+  const jit = keys.map((k, i) => Math.max(0.5, raw[k] * (1 + 0.08 * Math.sin(t * (1.7 + i * 0.9) + i))));
   const sum = jit.reduce((a, b) => a + b, 0);
   const bands = Object.fromEntries(keys.map((k, i) => [k, r(jit[i] / sum, 3)]));
   const stasis = clamp(0.45 + bands.alpha * 1.2 + bands.theta * 0.5 - bands.beta * 0.7 - bands.gamma * 0.5);
   const state = stasis >= 0.6 ? "STABLE" : stasis >= 0.25 ? "DRIFTING" : "UNSTABLE";
+  return { sensor: "ADS1299", bands, stasis_index: r(stasis), state };
+}
 
+export function headMotion(c, t) {
+  const sway = c.autoSway;
+  return {
+    sensor: "BMI270",
+    yaw_deg: r(wrap180(c.yaw + (sway ? Math.sin(t * 0.31) * 9 + Math.sin(t * 1.3) * 1.2 : 0)), 1),
+    pitch_deg: r(c.pitch + (sway ? Math.sin(t * 0.53) * 1.8 : 0), 1),
+    roll_deg: r(c.roll + (sway ? Math.sin(t * 0.71) * 1.4 : 0), 1),
+  };
+}
+
+export function buildFrame(c, t, seq) {
+  const eeg = eegFrom(c, t);
+  const { bands } = eeg;
   const threat = c.threat / 100;
   const resonance = c.resonance / 100;
   const stability = c.stability / 100;
@@ -96,8 +106,8 @@ export function buildFrame(c, t, seq) {
     seq,
     t_ms: Date.now(),
     source: "SIMULATOR",
-    eeg: { sensor: "ADS1299", bands, stasis_index: r(stasis), state },
-    imu: { sensor: "BMI270", yaw_deg: r(yaw, 1), pitch_deg: r(pitch, 1), roll_deg: r(roll, 1) },
+    eeg,
+    imu: headMotion(c, t),
     scan: { sensor: "TSL1401CL", resonance: r(resonance), stability: r(stability), entities },
     hud: {
       cognitive_load: r(load),
@@ -144,6 +154,10 @@ export const SCHEMA_FIELDS = [
   { field: "scan.entities[].bearing_deg / elevation_deg", type: "float", unit: "deg", range: "-180 … 180", sensor: "TSL1401CL" },
   { field: "scan.entities[].distance_m", type: "float", unit: "m", range: "0 … 300", sensor: "TSL1401CL" },
   { field: "scan.entities[].threat", type: "float", unit: "norm.", range: "0 … 1", sensor: "TSL1401CL" },
+  { field: "scan.entities[].type (optional)", type: "string", unit: "—", range: "pygmy | wraith | golem | gnome | boss", sensor: "corridor" },
+  { field: "scan.entities[].stage (optional)", type: "enum", unit: "—", range: "DETECTED | CLASSIFYING | IDENTIFIED | TRACKING | PROXIMITY | OBSERVED", sensor: "corridor" },
+  { field: "scan.entities[].disposition (optional)", type: "enum", unit: "—", range: "HOSTILE | NEUTRAL | SUBMITTED | DORMANT", sensor: "corridor" },
+  { field: "hud.boss_observation (optional)", type: "float", unit: "norm.", range: "0 … 1", sensor: "corridor" },
   { field: "hud.cognitive_load", type: "float", unit: "norm.", range: "0 … 1", sensor: "derived" },
   { field: "hud.throttle_tier", type: "int", unit: "tier", range: "0 | 1 | 2", sensor: "derived" },
   { field: "hud.target_lock / stable_zone", type: "bool", unit: "—", range: "true | false", sensor: "derived" },

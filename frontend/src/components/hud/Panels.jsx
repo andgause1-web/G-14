@@ -27,21 +27,21 @@ export const LoadoutPanel = () => (
 import { CymaticRadar } from "./CymaticRadar";
 import { CompassRose } from "./DynamicCompass";
 
-export const RadarPanel = ({ frame, frameRef }) => (
+export const RadarPanel = ({ frame, frameRef, maxRange = 300, legend }) => (
   <div className="hud-panel radar" data-testid="hud-cymatic-radar">
     <div className="panel-head">
       <span>04 · CYMATIC RADAR</span>
       <span className="jp">サイマティック</span>
     </div>
     <div className="radar-body">
-      <CymaticRadar frameRef={frameRef} />
+      <CymaticRadar frameRef={frameRef} maxRange={maxRange} />
       <div className="radar-side">
         <CompassRose frame={frame} />
-        <div className="micro">RANGE 300 m</div>
+        <div className="micro">RANGE {maxRange} m</div>
         <div className="micro">CONTACTS <b data-testid="radar-contact-count">{frame.scan.entities.length}</b></div>
-        <div className="legend"><i className="dot red" />AHRIMANIC</div>
-        <div className="legend"><i className="dot cyan" />LUCIFERIC</div>
-        <div className="legend"><i className="dot gold" />UNKNOWN</div>
+        {(legend || [["red", "AHRIMANIC"], ["cyan", "LUCIFERIC"], ["gold", "UNKNOWN"]]).map(([c, l]) => (
+          <div key={l} className="legend"><i className={`dot ${c.startsWith("#") ? "" : c}`} style={{ background: c.startsWith("#") ? c : undefined, boxShadow: c.startsWith("#") ? `0 0 6px ${c}` : undefined }} />{l}</div>
+        ))}
       </div>
     </div>
   </div>

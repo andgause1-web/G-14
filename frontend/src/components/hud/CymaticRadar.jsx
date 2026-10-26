@@ -5,7 +5,7 @@ import { wrap180 } from "@/lib/sim";
 const SIZE = 140;
 const RES = 96;
 const MODES = [[1, 2], [2, 3], [1, 4], [3, 4], [2, 5], [3, 5], [4, 5], [3, 7], [5, 6], [4, 7]];
-const MAX_RANGE = 300;
+const MAX_RANGE_DEFAULT = 300;
 
 const chladni = (x, y, n, m) =>
   Math.cos(n * Math.PI * x) * Math.cos(m * Math.PI * y) - Math.cos(m * Math.PI * x) * Math.cos(n * Math.PI * y);
@@ -39,7 +39,7 @@ function drawField(off, res, stab, t) {
   octx.putImageData(img, 0, 0);
 }
 
-export const CymaticRadar = ({ frameRef }) => {
+export const CymaticRadar = ({ frameRef, maxRange = MAX_RANGE_DEFAULT }) => {
   const off = useMemo(() => {
     const c = document.createElement("canvas");
     c.width = RES;
@@ -88,10 +88,10 @@ export const CymaticRadar = ({ frameRef }) => {
     ctx.fill();
     f.scan.entities.forEach((e) => {
       const ang = (wrap180(e.bearing_deg - f.imu.yaw_deg) * Math.PI) / 180;
-      const d = Math.min(e.distance_m / MAX_RANGE, 1) * R;
+      const d = Math.min(e.distance_m / maxRange, 1) * R;
+      const col = e.color || (e.class === "AHRIMANIC" ? "255,42,75" : e.class === "LUCIFERIC" ? "126,243,255" : "229,193,88");
       const x = cx + Math.sin(ang) * d;
       const y = cx - Math.cos(ang) * d;
-      const col = e.class === "AHRIMANIC" ? "255,42,75" : e.class === "LUCIFERIC" ? "126,243,255" : "229,193,88";
       const pulse = 3 + Math.sin(t * 5 + d) * 1.2;
       ctx.fillStyle = `rgba(${col},0.95)`;
       ctx.shadowColor = `rgba(${col},1)`;
