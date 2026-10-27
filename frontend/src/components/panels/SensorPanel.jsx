@@ -67,7 +67,7 @@ export const SensorPanel = memo(({ open, onClose, controls, setControls, view, s
               <SliderRow key={id} id={id} label={label} min={min} max={max} value={controls[id]} onChange={set} />
             ))}
             {g.title.startsWith("HEAD") && (
-              <ToggleRow id="auto-sway" label="Natural head sway" checked={controls.autoSway} onChange={(v) => set("autoSway", v)} />
+              <ToggleRow id="auto-sway" label="Natural head motion (breathing + drift)" checked={controls.autoSway} onChange={(v) => set("autoSway", v)} />
             )}
           </div>
         ))}

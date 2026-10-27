@@ -5,7 +5,7 @@ import { ENTITY_TYPES, ZONES, stepCloser, stepBack } from "@/lib/corridor";
 
 const MOODS = ["NEUTRAL", "SUBMITTED", "HOSTILE"];
 
-export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset, onZone }) => {
+export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset, onZone, onRun }) => {
   const set = (k, v) => setControls((c) => ({ ...c, [k]: v }));
   return (
     <aside className={`drawer drawer-right ${open ? "open" : ""}`} data-testid="hallway-panel">
@@ -30,6 +30,23 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
         <SliderRow id="gaze" label="Gaze ← left · right →" min={-100} max={100} value={controls.gaze} onChange={set} />
         <ToggleRow id="mouse-gaze" label="Gaze follows mouse" checked={controls.mouseGaze} onChange={(v) => set("mouseGaze", v)} />
         <div className="hint-text">Look left for vitals + radar, right for telemetry. They fade out when you look away.</div>
+
+        <div className="group-title">LIVE VECTOR RUN <span className="jp">疾走</span></div>
+        <div className="preset-row">
+          {["off", "manual", "auto"].map((m) => (
+            <button key={m} className={`preset-btn ${controls.run === m ? "active-cross" : ""}`} onClick={() => onRun(m)} data-testid={`run-${m}-button`}>{m.toUpperCase()}</button>
+          ))}
+        </div>
+        {controls.run === "manual" && <SliderRow id="speed" label="Cruise speed (×0.1 m/s · 14 walk · 65 sprint)" min={0} max={80} value={controls.speed} onChange={set} />}
+        <SliderRow id="bodyHeight" label="Body height cm" min={150} max={205} value={controls.bodyHeight} onChange={set} />
+        {controls.run !== "auto" && (
+          <div className="preset-row">
+            {["stand", "crouch", "prone"].map((s) => (
+              <button key={s} className={`preset-btn ${controls.stance === s ? "active-cross" : ""}`} onClick={() => set("stance", s)} data-testid={`stance-${s}-button`}>{s.toUpperCase()}</button>
+            ))}
+          </div>
+        )}
+        <div className="hint-text">Manual: W / ↑ walk, hold Shift to sprint, C crouch, X prone (otherwise cruise speed slider). Auto: scripted walk → sprint → slow → crouch near contacts. Speed raises load tier; path lines and brake line follow speed and eye height.</div>
 
         <div className="group-title">ZONE ROOM <span className="jp">区域</span></div>
         <div className="zone-grid">
@@ -80,7 +97,7 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
         <SliderRow id="composure" label="Composure %" min={0} max={100} value={controls.composure} onChange={set} />
         <SliderRow id="yaw" label="Yaw °" min={-30} max={30} value={controls.yaw} onChange={set} />
         <SliderRow id="pitch" label="Pitch °" min={-15} max={15} value={controls.pitch} onChange={set} />
-        <ToggleRow id="auto-sway" label="Natural head sway" checked={controls.autoSway} onChange={(v) => set("autoSway", v)} />
+        <ToggleRow id="auto-sway" label="Natural head motion (breathing + drift)" checked={controls.autoSway} onChange={(v) => set("autoSway", v)} />
 
         <div className="group-title">ENTITIES <span className="jp">存在</span></div>
         {Object.entries(ENTITY_TYPES).map(([k, T]) => (

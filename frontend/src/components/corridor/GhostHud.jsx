@@ -9,7 +9,7 @@ export function toScreen([x, y, z], imu, W, H) {
   const f = H * 0.94;
   return [
     W / 2 + (f * x) / z - (imu.yaw_deg * W) / FOV_H,
-    H * 0.5 + (f * (CAM_H - y)) / z + (imu.pitch_deg * H) / FOV_V,
+    H * 0.5 + (f * ((imu.head_height_m ?? CAM_H) - y)) / z + (imu.pitch_deg * H) / FOV_V,
   ];
 }
 

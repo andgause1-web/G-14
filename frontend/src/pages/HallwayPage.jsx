@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
-import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT } from "@/lib/corridor";
+import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT, RUN } from "@/lib/corridor";
+import { RunVectors, RunChip } from "@/components/corridor/RunVectors";
 import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue, AlertPips, TelemetryEdge, GazeDot, reveal } from "@/components/corridor/GhostHud";
 import { ThrottleHud } from "@/components/corridor/ThrottleHud";
 import { useSimulation } from "@/hooks/useSimulation";
@@ -16,6 +17,36 @@ import { DataFeed } from "@/components/panels/DataFeed";
 import { TopBar } from "@/components/TopBar";
 
 const STEP_MS = 3500;
+
+// W / ↑ = walk, +Shift = sprint, C = crouch, X = prone
+function useRunKeys(active, setControls) {
+  useEffect(() => {
+    if (!active) return undefined;
+    const keys = { w: false, shift: false };
+    const push = () => setControls((c) => ({ ...c, keyRun: keys.w ? (keys.shift ? RUN.sprint : RUN.walk) : null }));
+    const down = (ev) => {
+      if (ev.target.tagName === "INPUT" && ev.target.type === "text") return;
+      const k = ev.key.toLowerCase();
+      if (k === "w" || k === "arrowup") { keys.w = true; push(); }
+      else if (k === "shift") { keys.shift = true; push(); }
+      else if (k === "c" && !ev.repeat) setControls((c) => ({ ...c, stance: c.stance === "crouch" ? "stand" : "crouch" }));
+      else if (k === "x" && !ev.repeat) setControls((c) => ({ ...c, stance: c.stance === "prone" ? "stand" : "prone" }));
+    };
+    const up = (ev) => {
+      const k = ev.key.toLowerCase();
+      if (k === "w" || k === "arrowup") keys.w = false;
+      else if (k === "shift") keys.shift = false;
+      else return;
+      push();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [active, setControls]);
+}
 
 function useEventLog(frame, interval, resetKey) {
   const [events, setEvents] = useState([]);
@@ -107,11 +138,17 @@ export default function HallwayPage() {
     setPlaying(false);
     setControls((c) => ({ ...c, zone: z, distance: 100, resetKey: c.resetKey + 1 }));
   }, []);
+  const onRun = useCallback((mode) => {
+    setPlaying(false);
+    setControls((c) => ({ ...c, run: mode, keyRun: null, distance: Math.round(frameRef.current.lead_m) }));
+  }, [frameRef]);
+  useRunKeys(controls.run === "manual", setControls);
 
   return (
     <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
       <CorridorBackground frameRef={frameRef} zone={zone} />
       {ghost && <GhostVectors frame={frame} />}
+      <RunVectors frame={frame} />}
       <CorridorEntityLayer frame={frame} tier={tier} />
       {ghost && <Periphery frame={frame} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
@@ -149,14 +186,15 @@ export default function HallwayPage() {
         </>)}
         <div className="zone-badge gaze-fade" style={{ opacity: ghost ? Math.max(gL, 0.12) : throttle ? (frame.hud.obs_tier >= 1 ? 0 : 0.4) : 1 }} data-testid="zone-badge">{zone.name} <span className="jp">{zone.jp}</span></div>
         {!frame.hud.observer_filter && <div className="raw-warning" data-testid="raw-feed-warning">RAW ANOMALY FEED · OBSERVER FILTER OFFLINE</div>}
+        <RunChip frame={frame} />
       </div>
       <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">
-        ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {playing ? "AUTO-ADVANCING" : "MANUAL"} · ALL ENTITY DATA SIMULATED
+        ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {controls.run !== "off" ? <b data-testid="run-mode-label">VECTOR RUN {controls.run.toUpperCase()}{controls.run === "manual" ? " · W WALK · SHIFT SPRINT · C CROUCH · X PRONE" : ""}</b> : playing ? "AUTO-ADVANCING" : "MANUAL"} · ALL ENTITY DATA SIMULATED
       </div>
       <HallwayPanel open={panel === "controls"} onClose={closePanel} controls={controls} setControls={setControls}
-        playing={playing} setPlaying={setPlaying} onReset={onReset} onZone={onZone} />
+        playing={playing} setPlaying={setPlaying} onReset={onReset} onZone={onZone} onRun={onRun} />
       <DataFeed open={panel === "feed"} onClose={closePanel} frame={frame} streaming={streaming} setStreaming={setStreaming} streamStatus={streamStatus} />
     </div>
   );

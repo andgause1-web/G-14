@@ -11,11 +11,14 @@ export const CorridorBackground = ({ frameRef, zone }) => {
   useEffect(() => {
     let raf;
     const loop = () => {
-      const { yaw_deg, pitch_deg, roll_deg } = frameRef.current.imu;
+      const { imu, run, lead_m } = frameRef.current;
+      const { yaw_deg, pitch_deg, roll_deg } = imu;
       if (ref.current) {
         const x = (-yaw_deg * window.innerWidth) / FOV_H;
-        const y = (pitch_deg * window.innerHeight) / FOV_V;
-        ref.current.style.transform = `translate(${x}px, ${y}px) rotate(${-roll_deg}deg) scale(1.18)`;
+        // lower eye height lifts the room; an active run dollies the room toward you
+        const y = (pitch_deg * window.innerHeight) / FOV_V - (CAM_H - (imu.head_height_m ?? CAM_H)) * window.innerHeight * 0.09;
+        const dolly = run && run.mode !== "off" ? (1 - lead_m / 100) * 0.22 : 0;
+        ref.current.style.transform = `translate(${x}px, ${y}px) rotate(${-roll_deg}deg) scale(${1.18 + dolly})`;
       }
       raf = requestAnimationFrame(loop);
     };
@@ -37,7 +40,7 @@ function project(e, imu, W, H) {
   const T = ENTITY_TYPES[e.type];
   const f = H * 0.94;
   const x = W / 2 + (f * e.lane_m) / e.distance_m - (imu.yaw_deg * W) / FOV_H;
-  const feet = H * HORIZON + (f * (CAM_H - T.float)) / e.distance_m + (imu.pitch_deg * H) / FOV_V;
+  const feet = H * HORIZON + (f * ((imu.head_height_m ?? CAM_H) - T.float)) / e.distance_m + (imu.pitch_deg * H) / FOV_V;
   return { x, feet, h: (f * T.height) / e.distance_m };
 }
 

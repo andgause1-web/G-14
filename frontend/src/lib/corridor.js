@@ -102,6 +102,7 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
   yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "throttle", audio: true, gaze: 0, mouseGaze: false, loadManual: false, load: 30,
+  run: "off", speed: 30, bodyHeight: 178, stance: "stand", keyRun: null,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
@@ -158,6 +159,21 @@ export function envReadings(entities, t) {
   };
 }
 
+export const RUN = { walk: 1.4, sprint: 6.5, accel: 4, decel: 6, brakeA: 5, reaction: 0.3 };
+export const brakeDistance = (v) => v * RUN.reaction + (v * v) / (2 * RUN.brakeA);
+const EYE = { stand: 0.936, crouch: 0.58 };
+const eyeOf = (stance, bodyCm) => (stance === "prone" ? 0.35 : (bodyCm / 100) * EYE[stance]);
+
+// scripted run: walk in, sprint the open stretch, slow and crouch near contacts
+function autoRun(lead, nearest) {
+  if (lead <= 0.5) return { target: 0, stance: "stand" };
+  if (nearest < 14) return { target: 0.9, stance: "crouch" };
+  if (lead > 75) return { target: 1.6, stance: "stand" };
+  if (lead > 45) return { target: 6.2, stance: "stand" };
+  if (lead > 22) return { target: 3.0, stance: "stand" };
+  return { target: 1.2, stance: lead < 10 ? "stand" : "crouch" };
+}
+
 export const obsTierOf = (load) => (load >= 0.9 ? 3 : load >= 0.7 ? 2 : load >= 0.4 ? 1 : 0);
 
 export function makeCorridorSim() {
@@ -165,6 +181,11 @@ export function makeCorridorSim() {
   let last = null;
   let observe = 0;
   let resetKey = 0;
+  let speed = 0;
+  let eye = null;
+  let phase = 0;
+  let travelled = 0;
+  let prevNearest = CORRIDOR_LENGTH;
   const prevD = {};
   return (c, t, seq) => {
     const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
@@ -173,11 +194,34 @@ export function makeCorridorSim() {
       resetKey = c.resetKey;
       lead = c.distance;
       observe = 0;
+      speed = 0;
+      travelled = 0;
     }
-    lead += (c.distance - lead) * Math.min(1, dt * 1.6);
-    if (Math.abs(c.distance - lead) < 0.3) lead = c.distance;
-
-    const imu = headMotion(c, t);
+    const running = c.run && c.run !== "off";
+    const auto = c.run === "auto" ? autoRun(lead, prevNearest) : null;
+    const stance = auto ? auto.stance : c.stance;
+    let target = !running ? 0 : auto ? auto.target : c.keyRun ?? c.speed / 10;
+    if (stance === "crouch") target = Math.min(target, 2);
+    if (stance === "prone") target = Math.min(target, 0.6);
+    if (lead <= 0) target = 0;
+    speed = clamp(speed + clamp(target - speed, -RUN.decel * dt, RUN.accel * dt), 0, 9);
+    if (running) {
+      const step = Math.min(lead, speed * dt);
+      lead -= step;
+      travelled += step;
+      if (lead <= 0) speed = 0;
+    } else {
+      speed = 0;
+      lead += (c.distance - lead) * Math.min(1, dt * 1.6);
+      if (Math.abs(c.distance - lead) < 0.3) lead = c.distance;
+    }
+    const eyeT = eyeOf(stance, c.bodyHeight ?? 178);
+    eye = eye == null ? eyeT : eye + (eyeT - eye) * Math.min(1, dt * 5);
+    phase += dt * Math.PI * (1.6 + speed * 0.22);
+    const imu = {
+      ...headMotion(c, t, { phase, amp: speed > 0.15 ? 0.12 + speed * 0.12 : 0, breathHz: 0.23 + speed * 0.06 }),
+      head_height_m: r(eye, 2),
+    };
     const zone = ZONES[c.zone];
     const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t));
     // contact priority: threat weight x (1 / distance) x approach-speed bonus
@@ -195,16 +239,19 @@ export function makeCorridorSim() {
     const close = hostile.filter((e) => e.distance_m <= 40).length;
     const comp = c.composure / 100;
     const proxN = 1 - nearest / CORRIDOR_LENGTH;
+    prevNearest = nearest;
+    const brake = brakeDistance(speed);
+    const overrun = running && speed > 0.3 && hostile.some((e) => e.distance_m <= brake + 2);
 
-    const stress = clamp(proxN * 0.85 * (1.3 - comp) + (c.filter ? 0 : 0.35));
+    const stress = clamp(proxN * 0.85 * (1.3 - comp) + (c.filter ? 0 : 0.35) + speed * 0.03);
     const eeg = eegFrom({ alpha: 60 - 45 * stress, beta: 20 + 65 * stress, theta: 28 - 18 * stress, delta: 12 - 7 * stress, gamma: 8 + 60 * stress }, t);
-    const autoLoad = clamp(0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15);
+    const autoLoad = clamp(0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15 + speed * 0.055 + (overrun ? 0.1 : 0) - (stance === "crouch" ? 0.04 : stance === "prone" ? 0.07 : 0));
     const load = c.loadManual ? c.load / 100 : autoLoad;
     const stability = clamp((c.filter ? 0.92 : 0.35) - 0.55 * proxN * (1.2 - comp));
 
     if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 1.5);
 
-    const hr = 64 + stress * 75 + Math.sin(t * 1.9) * 1.5;
+    const hr = 64 + stress * 75 + speed * 6 + Math.sin(t * 1.9) * 1.5;
     const ghost = c.mode === "ghost";
     const calm = ghost && hr >= CALM_HR;
     // Dead Core limit: only the top-N hostiles by threat x proximity get full attention
@@ -230,6 +277,7 @@ export function makeCorridorSim() {
       imu,
       bio: { sensor: "MAX30102", heart_rate_bpm: Math.round(hr), spo2: Math.round(98 - stress * 3) },
       env: envReadings(entities, t),
+      run: { mode: c.run || "off", speed_mps: r(speed, 2), eye_m: r(eye, 2), stance, brake_m: r(brake, 1), travelled_m: r(travelled, 1), overrun },
       scan: { sensor: "TSL1401CL", resonance: r(clamp(0.25 + 0.65 * proxN)), stability: r(stability), entities },
       hud: {
         cognitive_load: r(load),

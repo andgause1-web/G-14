@@ -509,3 +509,33 @@
 .baseline-done { display: flex; align-items: center; gap: 12px; color: var(--green); font-size: 12px; letter-spacing: 0.18em; }
 .baseline-done .hud-btn { margin-left: auto; }
 .vec-red-zone { stroke-width: 3; }
+
+/* visor luciferic entities */
+.v-ent-layer { mix-blend-mode: screen; }
+.v-ent { position: absolute; transform: translate(-50%, -50%); pointer-events: none; transition: left 80ms linear, top 80ms linear, width 300ms ease, height 300ms ease; }
+.v-ent-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 10px var(--ent)) brightness(1.05); opacity: 0.82; animation: v-ent-breathe 6s ease-in-out infinite; transition: filter 900ms ease, opacity 900ms ease; }
+.v-ent.cls-ahrimanic .v-ent-img, .v-ent.cls-unknown .v-ent-img { -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 70%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 70%); }
+.v-ent.is-raw .v-ent-img { filter: blur(6px) grayscale(0.7) brightness(1.5); opacity: 0.4; animation: raw-warp 1.4s ease-in-out infinite; }
+.v-ent.st-detected .v-ent-img { opacity: 0.22; filter: blur(10px) brightness(2); }
+.v-ent .br { border-color: var(--ent); width: 10px; height: 10px; opacity: 0.6; }
+.v-ent.is-alert .br { border-color: var(--red); opacity: 1; animation: alert-flash 0.6s steps(2) infinite; }
+@keyframes v-ent-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-1.2%) scale(1.012); } }
+.oc-fl { color: #bfe6ff; opacity: 0.75; white-space: nowrap; }
+
+/* live vector run */
+.run-vectors { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: visible; transform-origin: 50% 50%; --rv: var(--cyan);
+  --rv-clear: 5vw; -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent var(--rv-clear), #000 calc(var(--rv-clear) + 90px)); mask-image: radial-gradient(circle at 50% 50%, transparent var(--rv-clear), #000 calc(var(--rv-clear) + 90px)); }
+.run-vectors.run-t2, .run-vectors.run-t3 { --rv-clear: 12.5vw; }
+.run-vectors.tone-amber { --rv: var(--amber); }
+.run-vectors.tone-red { --rv: var(--red); }
+.run-vectors path { fill: none; transition: stroke 300ms ease, opacity 300ms ease; }
+.rv-rail { stroke: var(--rv); stroke-width: 1.4; opacity: 0.55; filter: drop-shadow(0 0 4px var(--rv)); }
+.run-t2 .rv-rail { opacity: 0.4; }
+.rv-tick { stroke: var(--rv); stroke-width: 1; opacity: 0.3; }
+.rv-brake { stroke: var(--rv); stroke-width: 2.4; opacity: 0.85; stroke-dasharray: 10 6; filter: drop-shadow(0 0 6px var(--rv)); }
+.run-chip { position: absolute; bottom: 25%; left: 50%; transform: translateX(-50%); z-index: 12; display: flex; align-items: baseline; gap: 8px; font-size: 9px; letter-spacing: 0.16em; color: rgba(207, 239, 255, 0.75); white-space: nowrap; pointer-events: none; }
+.run-chip b { font-family: "Rajdhani", sans-serif; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.04em; }
+.run-bar { position: relative; display: inline-block; width: 70px; height: 3px; background: rgba(126, 243, 255, 0.15); align-self: center; }
+.run-bar i { position: absolute; inset: 0 auto 0 0; background: var(--cyan); transition: width 200ms linear; }
+.run-chip.overrun .run-bar i { background: var(--red); }
+.run-warn { color: var(--red); text-shadow: 0 0 8px var(--red); animation: alert-flash 0.8s steps(2) infinite; }

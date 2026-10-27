@@ -23,7 +23,13 @@ function hitsClear(box, cx, cy, R) {
   return (nx - cx) ** 2 + (ny - cy) ** 2 < (R + 16) ** 2;
 }
 
-export function layoutContacts(frame, tier, W, H, prevTop = []) {
+const corridorAnchor = (e, imu, W, H, T) => {
+  const [ax, feet] = toScreen([e.lane_m, T.float, e.distance_m], imu, W, H);
+  const h = Math.min(Math.max((H * 0.94 * T.height) / e.distance_m, 6), H * 0.7);
+  return { ax, ay: feet - h * 0.6, h };
+};
+
+export function layoutContacts(frame, tier, W, H, prevTop = [], { types = ENTITY_TYPES, anchor = corridorAnchor } = {}) {
   const cx = W / 2;
   const cy = H / 2;
   const R = clearRadius(W);
@@ -38,14 +44,12 @@ export function layoutContacts(frame, tier, W, H, prevTop = []) {
   const placed = [];
   const regions = {};
   list.forEach((e, i) => {
-    const T = ENTITY_TYPES[e.type];
-    const [ax0, feet] = toScreen([e.lane_m, T.float, e.distance_m], frame.imu, W, H);
-    const h = Math.min(Math.max((H * 0.94 * T.height) / e.distance_m, 6), H * 0.7);
-    const ax = ax0;
-    const ay = feet - h * 0.6;
+    const T = types[e.type];
+    const { ax, ay, h, visible = true } = anchor(e, frame.imu, W, H, T);
+    if (!visible) return;
     const side = ax < cx ? -1 : 1;
     const place = (k) => {
-      const s = k === "card" ? CARD : TAG;
+      const s = k === "card" ? { ...CARD, h: CARD.h + (e.false_light != null ? 12 : 0) } : TAG;
       const box = { lx: side > 0 ? ax + h * 0.3 + 14 : ax - h * 0.3 - 14 - s.w, ly: ay - s.h / 2, w: s.w, h: s.h };
       for (let g = 0; g < 60 && hitsClear(box, cx, cy, R); g++) box.lx += side * 10;
       return box;
@@ -71,12 +75,13 @@ export function layoutContacts(frame, tier, W, H, prevTop = []) {
 
 const Card = ({ p }) => (
   <div className="obs-card" style={{ left: p.lx, top: p.ly, width: p.w, "--ent": p.T.color, "--tone": tone(p.e.threat) }} data-testid={`obs-card-${p.e.id}`}>
-    <div className="oc-top"><span>{p.e.id} · {p.T.name}</span><span>{p.e.stage}</span></div>
+    <div className="oc-top"><span>{p.e.id} · {p.e.label ?? p.T.name}</span><span>{p.e.stage}</span></div>
     <div className="oc-row">
       <b>{Math.round(p.e.distance_m)} m</b> · <b className="oc-threat">{p.e.disposition === "HOSTILE" ? threatLabel(p.e.threat) : p.e.disposition}</b>
       {p.e.approach_mps > 0.5 && <> · ▼{p.e.approach_mps} m/s</>}
     </div>
-    <div className="oc-tac">{p.e.countered ? `◆ ${p.T.counterOn}` : p.T.tactic}</div>
+    {p.e.false_light != null && <div className="oc-fl" data-testid={`obs-card-falselight-${p.e.id}`}>FALSE LIGHT DAMPENER {Math.round(p.e.false_light * 100)}%</div>}
+    <div className="oc-tac">{p.e.countered ? `◆ ${p.T.counterOn}` : p.e.class === "UNKNOWN" ? "RESOLVING — hold observation" : p.T.tactic}</div>
   </div>
 );
 
@@ -86,7 +91,7 @@ const Tag = ({ p }) => (
   </div>
 );
 
-const Contacts = ({ placed }) => (
+export const Contacts = ({ placed }) => (
   <>
     <svg className="obs-lines" width="100%" height="100%">
       {placed.map((p) => (
