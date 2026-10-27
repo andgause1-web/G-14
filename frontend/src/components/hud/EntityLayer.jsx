@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { project, VISOR_TYPES } from "@/lib/sim";
 import { layoutContacts, Contacts } from "@/components/corridor/ThrottleHud";
 
-const entH = (e) => Math.min(460, Math.max(48, 9000 / (e.distance_m + 8)));
+const entH = (e) => Math.min(320, Math.max(48, 9000 / (e.distance_m + 8)));
 
 export const visorAnchor = (e, imu, W, H) => {
   const p = project(e, imu);

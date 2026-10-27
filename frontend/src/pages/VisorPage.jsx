@@ -57,7 +57,7 @@ export default function VisorPage() {
         <Layer show={L.compass} op={op("compass")} className="slot-compass" testId="slot-compass"><DynamicCompass frame={frame} /></Layer>
         <Layer show={L.stasis} op={op("stasis")} className="slot-stasis curve-left" testId="slot-stasis"><StasisMeter frame={frame} frameRef={frameRef} /></Layer>
         <Layer show={L.radar} op={op("radar")} className="slot-radar curve-left" testId="slot-radar"><RadarPanel frame={frame} frameRef={frameRef} /></Layer>
-        <div className="hud-slot slot-events curve-left obs-fade" style={{ opacity: tier >= 2 ? 0 : tier === 1 ? 0.5 : 0.85 }} data-testid="visor-event-log"><EventLog events={events} /></div>
+        <div className="hud-slot slot-events curve-left obs-fade" style={{ opacity: tier >= 2 ? 0 : tier === 1 ? 0.5 : 0.85 }} data-testid="visor-event-log"><EventLog events={events.slice(0, 3)} /></div>
         <Layer show={L.reticle} op={op("reticle")} className="slot-reticle" testId="slot-reticle">
           <LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} />
         </Layer>

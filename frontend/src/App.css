@@ -514,6 +514,7 @@
 .v-ent-layer { mix-blend-mode: screen; }
 .v-ent { position: absolute; transform: translate(-50%, -50%); pointer-events: none; transition: left 80ms linear, top 80ms linear, width 300ms ease, height 300ms ease; }
 .v-ent-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 10px var(--ent)) brightness(1.05); opacity: 0.82; animation: v-ent-breathe 6s ease-in-out infinite; transition: filter 900ms ease, opacity 900ms ease; }
+.v-ent-img { -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 72%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 60%, transparent 72%); }
 .v-ent.cls-ahrimanic .v-ent-img, .v-ent.cls-unknown .v-ent-img { -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 70%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 70%); }
 .v-ent.is-raw .v-ent-img { filter: blur(6px) grayscale(0.7) brightness(1.5); opacity: 0.4; animation: raw-warp 1.4s ease-in-out infinite; }
 .v-ent.st-detected .v-ent-img { opacity: 0.22; filter: blur(10px) brightness(2); }

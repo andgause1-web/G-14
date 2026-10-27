@@ -140,7 +140,7 @@ export default function HallwayPage() {
   }, []);
   const onRun = useCallback((mode) => {
     setPlaying(false);
-    setControls((c) => ({ ...c, run: mode, keyRun: null, distance: Math.round(frameRef.current.lead_m) }));
+    setControls((c) => ({ ...c, run: mode, keyRun: null, distance: c.run !== "off" ? Math.round(frameRef.current.lead_m) : c.distance }));
   }, [frameRef]);
   useRunKeys(controls.run === "manual", setControls);
 
@@ -148,7 +148,7 @@ export default function HallwayPage() {
     <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
       <CorridorBackground frameRef={frameRef} zone={zone} />
       {ghost && <GhostVectors frame={frame} />}
-      <RunVectors frame={frame} />}
+      <RunVectors frame={frame} />
       <CorridorEntityLayer frame={frame} tier={tier} />
       {ghost && <Periphery frame={frame} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
@@ -165,7 +165,7 @@ export default function HallwayPage() {
         ) : (
           <>
             <div className="hud-slot slot-stasis curve-left" style={{ opacity: op("stasis") }}><StasisMeter frame={frame} frameRef={frameRef} /></div>
-            <div className="hud-slot slot-events curve-left"><EventLog events={events} /></div>
+            <div className="hud-slot slot-events curve-left"><EventLog events={events.slice(0, 3)} /></div>
           </>
         )}
         <div className="hud-slot slot-radar curve-left gaze-fade" style={{ opacity: ghost ? Math.max(gL, level >= 3 ? 0.45 : 0) : op("radar") }} data-testid="slot-radar">

@@ -52,6 +52,8 @@ export function layoutContacts(frame, tier, W, H, prevTop = [], { types = ENTITY
       const s = k === "card" ? { ...CARD, h: CARD.h + (e.false_light != null ? 12 : 0) } : TAG;
       const box = { lx: side > 0 ? ax + h * 0.3 + 14 : ax - h * 0.3 - 14 - s.w, ly: ay - s.h / 2, w: s.w, h: s.h };
       for (let g = 0; g < 60 && hitsClear(box, cx, cy, R); g++) box.lx += side * 10;
+      // keep labels off the left/right HUD panel columns
+      box.lx = clamp(box.lx, W * 0.18, W * 0.82 - box.w);
       return box;
     };
     let kind = i < maxCards ? "card" : "tag";
@@ -161,7 +163,7 @@ export const ThrottleHud = ({ frame, frameRef, events, gaze, baseline, view }) =
         <div className={`stasis-strip state-${frame.eeg.state.toLowerCase()}`}><i style={{ width: `${frame.eeg.stasis_index * 100}%` }} /><span>STASIS {Math.round(frame.eeg.stasis_index * 100)}</span></div>
       </F>
       <F o={tier >= 1 ? 1 : base(gL)} className="slot-vitals" testId="obs-vitals"><VitalsChip frame={frame} /></F>
-      <F o={tier <= 1 ? base(gL) : 0} className="slot-events curve-left" style={{ transform: tier >= 2 ? "translateX(-140%)" : "none" }} testId="obs-event-log"><EventLog events={events} /></F>
+      <F o={tier <= 1 ? base(gL) : 0} className="slot-events curve-left" style={{ transform: tier >= 2 ? "translateX(-140%)" : "none" }} testId="obs-event-log"><EventLog events={events.slice(0, 3)} /></F>
       <F o={tier === 2 ? 0.9 : 0} className="slot-ticker" testId="obs-ticker">{events[0] ? `${Math.round(events[0].d)}m · ${events[0].text}` : "NO EVENTS"}</F>
       <F o={tier <= 1 ? base(gL) : tier === 2 ? 0.8 : 0} className={`slot-radar curve-left ${tier === 2 ? "radar-dot" : ""}`} testId="obs-radar">
         <RadarPanel frame={frame} frameRef={frameRef} maxRange={100} legend={CORRIDOR_LEGEND} />

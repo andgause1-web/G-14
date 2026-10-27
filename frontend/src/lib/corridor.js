@@ -102,7 +102,7 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
   yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "throttle", audio: true, gaze: 0, mouseGaze: false, loadManual: false, load: 30,
-  run: "off", speed: 30, bodyHeight: 178, stance: "stand", keyRun: null,
+  run: "off", speed: 0, bodyHeight: 178, stance: "stand", keyRun: null,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
@@ -186,6 +186,7 @@ export function makeCorridorSim() {
   let phase = 0;
   let travelled = 0;
   let prevNearest = CORRIDOR_LENGTH;
+  let wasRunning = false;
   const prevD = {};
   return (c, t, seq) => {
     const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
@@ -198,6 +199,8 @@ export function makeCorridorSim() {
       travelled = 0;
     }
     const running = c.run && c.run !== "off";
+    if (running && !wasRunning) lead = c.distance;
+    wasRunning = running;
     const auto = c.run === "auto" ? autoRun(lead, prevNearest) : null;
     const stance = auto ? auto.stance : c.stance;
     let target = !running ? 0 : auto ? auto.target : c.keyRun ?? c.speed / 10;

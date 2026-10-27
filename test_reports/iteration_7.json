@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend-only test at 1920x800 of the Visor page (/) luciferic entities, contact cards, throttle, event log and head motion, plus the Hallway LIVE VECTOR RUN (manual, auto and off), with a regression check. Every requested feature works and there are no console or page errors. Visor CALM: 2 image markers, E-01 seraph and E-02 shard, with data-stage/data-type set and images loaded. Both cards carry FALSE LIGHT DAMPENER NN% and leader lines. No overlap and no clear-zone hits in 10+ samples. COMBAT (tier 1): 4 entities, 1 full card (E-03 sentinel) and the rest tags. OVERLOAD (tier 2): 5 entities, tags only (1 tag). Toggling throttling off gives tier 0 with 2 cards and 3 tags. The event log logged E-01/E-02 -> TRACKING on calm->combat and -> PROXIMITY on overload. Head motion over 16 s: yaw 0.69-1.0 deg, pitch ±0.6, roll 0.02-0.32, well inside ±2.5. Hallway run: all controls are present. The speed slider shows only in manual and the stance buttons are hidden in auto. Holding W walks at 1.4 m/s and +Shift ramps to 6.5 m/s: gait WALK->JOG->SPRINT, tone cyan->amber above 4 m/s, and red plus run-overrun at lead 7.6 m. Rails and brake line render. C crouch: eye 1.67->1.03 m, speed capped at 2.0. X prone: eye 0.35 m, speed capped at 0.6. At lead 100, load went 0.33->0.68 (T0->T1) while sprinting; at lead 20 it went 0.77->1.0 (T2->T3). Releasing keys decays speed. Auto: 1.6 m/s, then 6.2 m/s sprint between 75 and 45 m (amber), then 3.0, then crouch 1.2 m/s below 22 m, then 0.9 m/s near contacts. run-mode-label reads 'VECTOR RUN AUTO'. run-off keeps the lead (50.1 -> 50) and removes the chip and vectors. Reset goes back to 100 m / travelled 0. Regression passed: 3-VECTOR, ANALYST (the run works in analyst), zone change and back to THROTTLE, and /baseline loads. I fixed one typo: a stray '}' after <RunVectors/> in HallwayPage.jsx that put a literal '}' text node in the page.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HallwayPage", "issue": "A stray '}' after <RunVectors frame={frame} /> rendered a literal '}' text node. FIXED by the testing agent.", "selector": "[data-testid=hallway-page]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Step CLOSER then pick a run mode", "issue": "onRun sets distance = round(frameRef.current.lead_m). If the user clicks CLOSER and then MANUAL/AUTO while the lead is still easing toward the new target, the target is overwritten by the in-between lead (e.g. 4x CLOSER then MANUAL right away left the lead at ~70 m instead of 20 m).", "affected_selectors": ["[data-testid=step-closer-button]", "[data-testid=run-manual-button]", "[data-testid=run-auto-button]"]},
+      {"flow": "Run manual default", "issue": "The default cruise speed is 30 (3 m/s), so selecting MANUAL starts moving at 3 m/s with no key pressed, and releasing W/Shift decays to 3 m/s, not to a stop. This is as designed by the hint text, but it is surprising: a default of 0 would be a better keyboard UX.", "affected_selectors": ["[data-testid=slider-speed]", "[data-testid=run-chip]"]}
+    ],
+    "design_issues": [
+      {"screen": "Visor (/) entity markers", "issues": ["Luciferic images (seraph/shard/choir) have no edge mask, unlike ahrimanic/unknown. At close range (OVERLOAD, 460 px tall) the rectangular JPEG frame is clearly visible as a box.", "At PROXIMITY the large markers (up to 460 px) cover the left stasis panel and the right loadout area, so tier 2 still looks cluttered."]},
+      {"screen": "Visor (/) at 1920x800", "issues": ["The E-01 contact card (~x 260-445, y 400) overlaps the top of the left CYMATIC RADAR panel / event log. Cards don't avoid the HUD panels."]},
+      {"screen": "Hallway at 1920x800", "issues": ["With 4-5 entries the EVENT LOG grows and overlaps the CYMATIC RADAR header below it.", "At tier 3 the run-chip is set to 0.5 opacity, which makes the red 'OVERRUN — CONTACT INSIDE BRAKE' warning hard to read. A safety-critical warning should stay at full opacity.", "The tier-3 direction arrow sits on top of the run-chip speed number."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Add an edge mask/vignette (or transparent PNGs) to the luciferic visor images so the rectangular frame is not visible at close range; consider capping marker height at PROXIMITY.",
+    "Keep the run-overrun warning at full opacity at tier 3 and move it (or the obs-direction-arrow) so they don't overlap.",
+    "onRun: when switching run mode with run currently off, keep c.distance (or wait for the lead to settle) instead of overwriting it with the in-between lead.",
+    "Consider a manual cruise speed default of 0 so manual mode only moves on W.",
+    "Stop the hallway event log from overflowing into the radar panel at short viewport heights (max-height/overflow), and keep visor contact cards from overlapping the left HUD panels."
+  ],
+  "critical_code_review_comments": [
+    "HallwayPage.jsx:151 had a JSX typo (stray '}'). Fixed.",
+    "EntityLayer reads window.innerWidth/innerHeight on every render without a resize listener. The layout updates only on the next frame, which is fine with RAF but means it isn't reactive.",
+    "Corridor entities sit at lead + offset, so contacts always keep the same lead-relative distance. Overrun only triggers when lead <= brake+2 (~8 m at sprint). Fine for a sim, but note that approach speed relative to the runner isn't modelled."
+  ],
+  "updated_files": ["/app/frontend/src/pages/HallwayPage.jsx"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% of requested features pass; 3 minor UX/integration issues and several design notes"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use viewport 1920x800 and click buttons via page.evaluate(el.click()). Preset buttons in the sensor drawer report 'outside viewport' with a normal click. Read the data feed via open-data-feed-button and JSON.parse on [data-testid=data-feed-json] (lead_m, run{}, hud.obs_tier/cognitive_load, imu). For manual run, set the cruise speed to 0 first: focus '[data-testid=slider-speed] [role=slider]' and press Home. Then mouse-click the scene and hold w + Shift. Wait ~7 s after step-closer before switching run mode, because onRun snapshots the current lead. Overrun shows up when sprinting from 20 m down to a lead of ~7.6 m (~11 s headless). The headless frame rate is ~3-4 fps."
+}

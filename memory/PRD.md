@@ -48,7 +48,15 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - /baseline tab: 60 s (or fast 6 s) EM/thermal/IMU recording → localStorage g14.baseline; HUD chip BASELINE STABLE / DEVIATION +X% (4σ & ≥5%)
 - Tested: iteration_6 + fixes (baseline flicker, clear-zone margin, card hysteresis, region counting, zone badge hidden T1+)
 
+## Visor luciferic entities + natural head motion + Live Vector Run — added 2026-06
+- Visor (/): new generated luciferic art (Halo Seraph, Glass Herald, Veiled Choir) + Iron Egregore (ahrimanic); screen-blended, soft-masked, stage classification by range (DETECTED→PROXIMITY), raw blur until identified
+- Visor reuses hallway throttle contact layout: cards with leader lines (FALSE LIGHT DAMPENER %), tags, clear-zone, tier caps; labels kept off side panel columns; stage event log (max 3)
+- Head motion (both pages): breathing bob + slow postural drift (±~1.5°), replaces ±9° yaw swing; gait bob when running
+- Hallway LIVE VECTOR RUN: OFF / MANUAL (W walk, Shift sprint, C crouch, X prone, cruise slider default 0) / AUTO (walk→sprint→slow→crouch near contacts); body height slider; eye height drives projection of entities, path rails, brake line (reaction+v²/2a) and room parallax; speed raises load/heart rate → throttle tiers; overrun warning when a hostile sits inside brake distance; frame.run + imu.head_height_m streamed
+- Tested: iteration_7 all pass; fixes: stray brace, run start keeps stepped distance, speed default 0, luciferic edge mask, marker cap 320 px, event log cap, overrun at full opacity, T3 chip offset
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data
+- P1: Unreal kit types for run/head_height fields
 - P2: Saved presets/layouts; session record/replay; ESP32-CAM background; exportable HUD style settings for UMG

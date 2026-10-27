@@ -44,7 +44,7 @@ export const RunChip = ({ frame }) => {
   if (!run || run.mode === "off") return null;
   const tier = hud.obs_tier;
   return (
-    <div className={`run-chip obs-fade ${run.overrun ? "overrun" : ""}`} style={{ opacity: tier === 3 ? 0.5 : 0.85 }} data-testid="run-chip">
+    <div className={`run-chip obs-fade ${run.overrun ? "overrun" : ""}`} style={{ opacity: run.overrun ? 1 : tier === 3 ? 0.5 : 0.85, left: tier === 3 ? "32%" : "50%" }} data-testid="run-chip">
       <b data-testid="run-speed">{run.speed_mps.toFixed(1)}</b><span>m/s · {GAIT(run.speed_mps)}</span>
       <i className="run-bar"><i style={{ width: `${Math.min(100, (run.speed_mps / 7) * 100)}%` }} /></i>
       {tier < 3 && (
