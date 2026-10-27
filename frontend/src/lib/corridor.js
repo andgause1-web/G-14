@@ -1,4 +1,4 @@
-import { clamp, eegFrom, headMotion } from "@/lib/sim";
+import { clamp, eegFrom, headMotion, luciferLure } from "@/lib/sim";
 
 const r = (v, p = 2) => Math.round(v * 10 ** p) / 10 ** p;
 const IMG = "https://static.prod-images.emergentagent.com/jobs/e985c244-e4a3-4446-beff-f722650fda53/images/";
@@ -102,14 +102,14 @@ const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
   yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "throttle", audio: true, gaze: 0, mouseGaze: false, loadManual: false, load: 30,
-  run: "off", speed: 0, bodyHeight: 178, stance: "stand", keyRun: null,
+  run: "off", speed: 0, bodyHeight: 178, stance: "stand", keyRun: null, resist: false, bodyAudio: false, bodyVol: 50,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
 export const stepCloser = (c) => ({ ...c, distance: Math.max(0, Math.ceil(c.distance / c.interval) * c.interval - c.interval) });
 export const stepBack = (c) => ({ ...c, distance: Math.min(100, Math.floor(c.distance / c.interval) * c.interval + c.interval) });
 
-function buildEntity(e, c, lead, t) {
+function buildEntity(e, c, lead, t, eye = 1.6) {
   const T = ENTITY_TYPES[e.type];
   const jitter = e.type === "pygmy" ? Math.sin(t * 2.3 + e.offset * 3) * 0.35 : e.type === "wraith" ? Math.sin(t * 0.4) * 0.15 : 0;
   const d0 = e.fixed ?? clamp(lead + e.offset, 3, 95);
@@ -141,7 +141,7 @@ function buildEntity(e, c, lead, t) {
     disposition,
     countered,
     bearing_deg: r((Math.atan2(lane, d) * 180) / Math.PI, 2),
-    elevation_deg: 0,
+    elevation_deg: r((Math.atan2(T.float + T.height * 0.6 - eye, d) * 180) / Math.PI, 2),
     distance_m: r(d, 1),
     lane_m: r(lane, 2),
     threat: r(clamp(threat)),
@@ -187,6 +187,10 @@ export function makeCorridorSim() {
   let travelled = 0;
   let prevNearest = CORRIDOR_LENGTH;
   let wasRunning = false;
+  let breath = 0;
+  let step = 0;
+  let lastStepIdx = 0;
+  let prevStress = 0;
   const prevD = {};
   return (c, t, seq) => {
     const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
@@ -221,12 +225,17 @@ export function makeCorridorSim() {
     const eyeT = eyeOf(stance, c.bodyHeight ?? 178);
     eye = eye == null ? eyeT : eye + (eyeT - eye) * Math.min(1, dt * 5);
     phase += dt * Math.PI * (1.6 + speed * 0.22);
+    const stepIdx = Math.floor(phase / Math.PI);
+    if (stepIdx !== lastStepIdx && speed > 0.15) step += 1;
+    lastStepIdx = stepIdx;
+    const breathHz = c.resist ? 0.1 : 0.22 + speed * 0.06 + prevStress * 0.12;
+    breath += dt * 2 * Math.PI * breathHz;
     const imu = {
-      ...headMotion(c, t, { phase, amp: speed > 0.15 ? 0.12 + speed * 0.12 : 0, breathHz: 0.23 + speed * 0.06 }),
+      ...headMotion(c, t, { phase, amp: speed > 0.15 ? 0.12 + speed * 0.12 : 0, breathPhase: breath }),
       head_height_m: r(eye, 2),
     };
     const zone = ZONES[c.zone];
-    const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t));
+    const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t, eye));
     // contact priority: threat weight x (1 / distance) x approach-speed bonus
     entities.forEach((e) => {
       const p = prevD[e.id];
@@ -247,8 +256,10 @@ export function makeCorridorSim() {
     const overrun = running && speed > 0.3 && hostile.some((e) => e.distance_m <= brake + 2);
 
     const stress = clamp(proxN * 0.85 * (1.3 - comp) + (c.filter ? 0 : 0.35) + speed * 0.03);
+    prevStress = stress;
     const eeg = eegFrom({ alpha: 60 - 45 * stress, beta: 20 + 65 * stress, theta: 28 - 18 * stress, delta: 12 - 7 * stress, gamma: 8 + 60 * stress }, t);
-    const autoLoad = clamp(0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15 + speed * 0.055 + (overrun ? 0.1 : 0) - (stance === "crouch" ? 0.04 : stance === "prone" ? 0.07 : 0));
+    const lure = luciferLure(entities, imu, { composure: c.composure, resisting: c.resist, bands: eeg.bands, range: 70, gain: 1.5 });
+    const autoLoad = clamp(0.12 * lure.pull + 0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15 + speed * 0.055 + (overrun ? 0.1 : 0) - (stance === "crouch" ? 0.04 : stance === "prone" ? 0.07 : 0));
     const load = c.loadManual ? c.load / 100 : autoLoad;
     const stability = clamp((c.filter ? 0.92 : 0.35) - 0.55 * proxN * (1.2 - comp));
 
@@ -278,9 +289,9 @@ export function makeCorridorSim() {
       lead_m: r(lead, 1),
       eeg,
       imu,
-      bio: { sensor: "MAX30102", heart_rate_bpm: Math.round(hr), spo2: Math.round(98 - stress * 3) },
+      bio: { sensor: "MAX30102", heart_rate_bpm: Math.round(hr), spo2: Math.round(98 - stress * 3), breath_hz: r(breathHz, 3), breath_phase: r(breath % (2 * Math.PI), 3) },
       env: envReadings(entities, t),
-      run: { mode: c.run || "off", speed_mps: r(speed, 2), eye_m: r(eye, 2), stance, brake_m: r(brake, 1), travelled_m: r(travelled, 1), overrun },
+      run: { mode: c.run || "off", speed_mps: r(speed, 2), eye_m: r(eye, 2), stance, brake_m: r(brake, 1), travelled_m: r(travelled, 1), overrun, step },
       scan: { sensor: "TSL1401CL", resonance: r(clamp(0.25 + 0.65 * proxN)), stability: r(stability), entities },
       hud: {
         cognitive_load: r(load),
@@ -294,6 +305,7 @@ export function makeCorridorSim() {
         focus_ids: focus,
         alert_level: alert,
         obs_tier: obsTierOf(load),
+        lure,
       },
     };
   };

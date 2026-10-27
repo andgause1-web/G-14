@@ -12,7 +12,7 @@ export const PRESETS = {
   overload: { alpha: 12, beta: 92, theta: 8, delta: 4, gamma: 85, entityCount: 5, distance: 18, threat: 96, resonance: 95, stability: 18 },
 };
 
-export const DEFAULT_CONTROLS = { ...PRESETS.calm, yaw: 0, pitch: 0, roll: 0, autoSway: true };
+export const DEFAULT_CONTROLS = { ...PRESETS.calm, yaw: 0, pitch: 0, roll: 0, autoSway: true, composure: 70, resist: false, bodyAudio: false, bodyVol: 50 };
 
 export const DEFAULT_VIEW = {
   layers: { entities: true, radar: true, reticle: true, stasis: true, compass: true },
@@ -117,8 +117,7 @@ export function eegFrom(raw, t) {
 // natural head motion: breathing bob + slow postural drift; optional gait = { phase, amp, breathHz }
 export function headMotion(c, t, gait = null) {
   const on = c.autoSway;
-  const bHz = gait?.breathHz ?? 0.23;
-  const br = Math.sin(t * 2 * Math.PI * bHz);
+  const br = Math.sin(gait?.breathPhase ?? t * 2 * Math.PI * 0.23);
   const amp = on ? gait?.amp ?? 0 : 0;
   const ph = gait?.phase ?? 0;
   const yaw = on ? Math.sin(t * 0.07) * 1.3 + Math.sin(t * 0.19 + 1) * 0.45 + Math.sin(t * 1.1) * 0.06 + Math.sin(ph) * amp * 0.4 : 0;
@@ -132,14 +131,43 @@ export function headMotion(c, t, gait = null) {
   };
 }
 
-export function buildFrame(c, t, seq) {
+// luciferic lure: strongest false-light entity pulls the reticle; composure + steadying + calm EEG resist
+export function luciferLure(entities, imu, { composure, resisting, bands, range, gain = 1.1 }) {
+  const calm = clamp(0.5 + (bands.alpha - bands.beta) * 1.5);
+  const resist = clamp(0.45 * (composure / 100) + 0.3 * calm + (resisting ? 0.4 : 0));
+  let best = { target_id: null, pull: 0, dx_deg: 0, dy_deg: 0 };
+  entities.forEach((e) => {
+    if (e.class !== "LUCIFERIC" || e.stage === "DETECTED") return;
+    const dx = wrap180(e.bearing_deg - imu.yaw_deg);
+    if (Math.abs(dx) > FOV_H / 2) return;
+    const pull = clamp(clamp(1 - e.distance_m / range) * gain - resist * 0.9);
+    if (pull > best.pull) best = { target_id: e.id, pull, dx_deg: dx * pull * 0.7, dy_deg: (e.elevation_deg - imu.pitch_deg) * pull * 0.7 };
+  });
+  return { ...best, pull: r(best.pull), dx_deg: r(best.dx_deg), dy_deg: r(best.dy_deg), resist: r(resist), resisting: !!resisting, calm: r(calm) };
+}
+
+export function makeVisorSim() {
+  let last = null;
+  let breath = 0;
+  return (c, t, seq) => {
+    const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
+    last = t;
+    const hz = c.resist ? 0.1 : 0.2 + (c.beta / 100) * 0.25;
+    breath += dt * 2 * Math.PI * hz;
+    return buildFrame(c, t, seq, { breathPhase: breath, breathHz: hz });
+  };
+}
+
+export function buildFrame(c, t, seq, gait = null) {
   const eeg = eegFrom(c, t);
   const { bands } = eeg;
   const threat = c.threat / 100;
   const resonance = c.resonance / 100;
   const stability = c.stability / 100;
   const entities = buildEntities(c, t);
-  const load = clamp(0.5 * bands.beta + 0.25 * threat + 0.04 * entities.length + 0.25 * (1 - stability));
+  const imu = headMotion(c, t, gait);
+  const lure = luciferLure(entities, imu, { composure: c.composure ?? 70, resisting: c.resist, bands, range: 160 });
+  const load = clamp(0.5 * bands.beta + 0.25 * threat + 0.04 * entities.length + 0.25 * (1 - stability) + 0.12 * lure.pull);
 
   return {
     schema: "g14.hud.v1",
@@ -147,13 +175,15 @@ export function buildFrame(c, t, seq) {
     t_ms: Date.now(),
     source: "SIMULATOR",
     eeg,
-    imu: headMotion(c, t),
+    imu,
+    bio: { breath_hz: r(gait?.breathHz ?? 0.23, 3), breath_phase: r((gait?.breathPhase ?? 0) % (2 * Math.PI), 3) },
     scan: { sensor: "TSL1401CL", resonance: r(resonance), stability: r(stability), entities },
     hud: {
       cognitive_load: r(load),
       throttle_tier: load >= 0.8 ? 2 : load >= 0.6 ? 1 : 0,
       target_lock: entities.some((e) => e.class === "AHRIMANIC") && resonance >= 0.5,
       stable_zone: stability >= 0.8,
+      lure,
     },
   };
 }
@@ -196,8 +226,10 @@ export const SCHEMA_FIELDS = [
   { field: "scan.entities[].threat", type: "float", unit: "norm.", range: "0 … 1", sensor: "TSL1401CL" },
   { field: "scan.entities[].type (optional)", type: "string", unit: "—", range: "seraph | shard | choir | sentinel | pygmy | wraith | golem | gnome | boss", sensor: "visor / corridor" },
   { field: "scan.entities[].false_light (optional)", type: "float", unit: "norm.", range: "0 … 1 dampener", sensor: "visor" },
+  { field: "hud.lure.{target_id,pull,resist,resisting,dx_deg,dy_deg}", type: "object", unit: "norm. · deg", range: "pull 0 … 1", sensor: "derived" },
+  { field: "bio.breath_hz / breath_phase", type: "float", unit: "Hz · rad", range: "0.1 … 0.8 · 0 … 2π", sensor: "MAX30102 / derived" },
   { field: "imu.head_height_m (optional)", type: "float", unit: "m", range: "0.3 … 1.9", sensor: "BMI270+baro" },
-  { field: "run.{mode,speed_mps,eye_m,stance,brake_m,travelled_m}", type: "object", unit: "m/s · m", range: "mode off | manual | auto", sensor: "corridor run" },
+  { field: "run.{mode,speed_mps,eye_m,stance,brake_m,travelled_m,overrun,step}", type: "object", unit: "m/s · m", range: "mode off | manual | auto", sensor: "corridor run" },
   { field: "scan.entities[].stage (optional)", type: "enum", unit: "—", range: "DETECTED | CLASSIFYING | IDENTIFIED | TRACKING | PROXIMITY | OBSERVED", sensor: "corridor" },
   { field: "scan.entities[].disposition (optional)", type: "enum", unit: "—", range: "HOSTILE | NEUTRAL | SUBMITTED | DORMANT", sensor: "corridor" },
   { field: "hud.boss_observation (optional)", type: "float", unit: "norm.", range: "0 … 1", sensor: "corridor" },

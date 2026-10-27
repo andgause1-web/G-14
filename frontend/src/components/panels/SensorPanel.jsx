@@ -42,6 +42,13 @@ export const ToggleRow = ({ id, label, checked, onChange }) => (
   </label>
 );
 
+export const BodyAudioRows = ({ controls, set }) => (
+  <>
+    <ToggleRow id="body-audio" label="Footstep + breathing audio" checked={controls.bodyAudio} onChange={(v) => set("bodyAudio", v)} />
+    {controls.bodyAudio && <SliderRow id="bodyVol" label="Body audio volume %" min={0} max={100} value={controls.bodyVol} onChange={set} />}
+  </>
+);
+
 export const SensorPanel = memo(({ open, onClose, controls, setControls, view, setView, activePreset, setActivePreset }) => {
   const set = (k, v) => { setControls((c) => ({ ...c, [k]: v })); setActivePreset(null); };
   const applyPreset = (k) => { setControls((c) => ({ ...c, ...PRESETS[k] })); setActivePreset(k); };
@@ -71,6 +78,12 @@ export const SensorPanel = memo(({ open, onClose, controls, setControls, view, s
             )}
           </div>
         ))}
+        <div className="ctl-group">
+          <div className="group-title">OPERATOR · LURE <span className="jp">操作者</span></div>
+          <SliderRow id="composure" label="Composure %" min={0} max={100} value={controls.composure} onChange={set} />
+          <div className="hint-text">Luciferic entities pull the crosshair toward their false light. Composure, calm alpha (vs beta) and holding Space resist it.</div>
+          <BodyAudioRows controls={controls} set={set} />
+        </div>
         <div className="ctl-group">
           <div className="group-title">CROSSHAIR <span className="jp">照準</span></div>
           <div className="preset-row">

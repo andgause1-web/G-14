@@ -14,6 +14,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnG14HeadMotionChanged, const FG14I
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnG14EntitiesChanged, const TArray<FG14Entity>&, Entities);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnG14ScanChanged, const FG14ScanData&, Scan);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnG14ConnectionChanged, bool, bConnected);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnG14RunChanged, const FG14RunData&, Run);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnG14LureChanged, const FG14LureData&, Lure);
 
 UCLASS(Blueprintable, ClassGroup = (G14))
 class G14HUD_API AG14TelemetryReceiver : public AActor
@@ -43,6 +45,8 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "G14|Events") FOnG14EntitiesChanged OnEntitiesChanged;
 	UPROPERTY(BlueprintAssignable, Category = "G14|Events") FOnG14ScanChanged OnScanChanged;
 	UPROPERTY(BlueprintAssignable, Category = "G14|Events") FOnG14ConnectionChanged OnConnectionChanged;
+	UPROPERTY(BlueprintAssignable, Category = "G14|Events") FOnG14RunChanged OnRunChanged;
+	UPROPERTY(BlueprintAssignable, Category = "G14|Events") FOnG14LureChanged OnLureChanged;
 
 	UFUNCTION(BlueprintCallable, Category = "G14|Connection") void Connect();
 	UFUNCTION(BlueprintCallable, Category = "G14|Connection") void Disconnect();

@@ -8,6 +8,7 @@ import { RadarPanel, LoadoutPanel } from "@/components/hud/Panels";
 import { StasisMeter } from "@/components/hud/StasisMeter";
 import { LissajousReticle } from "@/components/hud/LissajousReticle";
 import { EventLog } from "./CorridorProgress";
+import { LureWrap } from "@/components/hud/LureCue";
 import { CORRIDOR_LEGEND } from "@/lib/corridor";
 
 const CARD = { w: 184, h: 58 };
@@ -170,7 +171,7 @@ export const ThrottleHud = ({ frame, frameRef, events, gaze, baseline, view }) =
       </F>
       <F o={tier === 0 ? base(gR) : 0} className="slot-target curve-right" testId="obs-loadout"><LoadoutPanel /></F>
       <F o={tier <= 1 ? Math.max(0.04, gR) : 0} className="slot-telemetry curve-right" testId="obs-telemetry"><TelemetryEdge frame={frame} /></F>
-      <F o={tier < 3 ? 1 : 0} className="slot-reticle" testId="obs-reticle"><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></F>
+      <F o={tier < 3 ? 1 : 0} className="slot-reticle" testId="obs-reticle"><LureWrap frame={frame}><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></LureWrap></F>
       <F o={tier < 3 ? 0.6 : 0} className="slot-pips" testId="obs-load">
         <div className="obs-load">{[0, 1, 2, 3].map((t) => <i key={t} className={t <= tier ? `on t${tier}` : ""} />)}<span>LOAD {load} · T{tier}</span></div>
       </F>

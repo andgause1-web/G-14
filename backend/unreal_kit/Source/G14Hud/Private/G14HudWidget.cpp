@@ -48,6 +48,8 @@ void UG14HudWidget::HandleFrame(const FG14HudFrame& Frame)
 {
 	LastFrame = Frame;
 	UpdateStasisMeter(Frame.EEG);
+	UpdateRun(Frame.Run);
+	UpdateLure(Frame.Lure);
 	UpdateCompass(Frame.IMU);
 	UpdateEntities(Frame.Scan.Entities);
 	UpdateTargeting(Frame.Scan, Frame.Hud.bTargetLock, Frame.Hud.bStableZone);

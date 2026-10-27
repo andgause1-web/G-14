@@ -37,6 +37,13 @@ namespace G14Json
 		if (S.Equals(TEXT("DRIFTING"), ESearchCase::IgnoreCase)) return EG14StasisState::Drifting;
 		return EG14StasisState::Stable;
 	}
+
+	EG14Stance Stance(const FString& S)
+	{
+		if (S.Equals(TEXT("crouch"), ESearchCase::IgnoreCase)) return EG14Stance::Crouch;
+		if (S.Equals(TEXT("prone"), ESearchCase::IgnoreCase)) return EG14Stance::Prone;
+		return EG14Stance::Stand;
+	}
 }
 
 AG14TelemetryReceiver::AG14TelemetryReceiver()
@@ -159,6 +166,8 @@ bool AG14TelemetryReceiver::ProcessMessage(const FString& Json)
 	OnEEGChanged.Broadcast(Frame.EEG);
 	OnScanChanged.Broadcast(Frame.Scan);
 	OnEntitiesChanged.Broadcast(Frame.Scan.Entities);
+	OnRunChanged.Broadcast(Frame.Run);
+	OnLureChanged.Broadcast(Frame.Lure);
 
 	const bool bHeadMoved = bFirst
 		|| FMath::Abs(FMath::FindDeltaAngleDegrees(PrevIMU.Yaw, Frame.IMU.Yaw)) > HeadMotionThresholdDeg
@@ -211,6 +220,7 @@ bool AG14TelemetryReceiver::ParseFrame(const FString& Json, FG14HudFrame& Out)
 		Out.IMU.Yaw = G14Json::Num(Imu, TEXT("yaw_deg"));
 		Out.IMU.Pitch = G14Json::Num(Imu, TEXT("pitch_deg"));
 		Out.IMU.Roll = G14Json::Num(Imu, TEXT("roll_deg"));
+		Out.IMU.HeadHeightM = G14Json::Num(Imu, TEXT("head_height_m"), -1.f);
 	}
 
 	// scan { sensor, resonance, stability, entities[] }
@@ -264,6 +274,38 @@ bool AG14TelemetryReceiver::ParseFrame(const FString& Json, FG14HudFrame& Out)
 	{
 		Out.Bio.HeartRateBpm = static_cast<int32>(G14Json::Num(Bio, TEXT("heart_rate_bpm")));
 		Out.Bio.SpO2 = static_cast<int32>(G14Json::Num(Bio, TEXT("spo2")));
+		Out.Bio.BreathHz = G14Json::Num(Bio, TEXT("breath_hz"), 0.23f);
+		Out.Bio.BreathPhase = G14Json::Num(Bio, TEXT("breath_phase"));
+	}
+
+	// run { mode, speed_mps, eye_m, stance, brake_m, travelled_m, overrun, step }
+	if (const TSharedPtr<FJsonObject> Run = G14Json::Obj(Root, TEXT("run")))
+	{
+		Run->TryGetStringField(TEXT("mode"), Out.Run.Mode);
+		Out.Run.bActive = !Out.Run.Mode.Equals(TEXT("off"), ESearchCase::IgnoreCase);
+		Out.Run.SpeedMps = G14Json::Num(Run, TEXT("speed_mps"));
+		Out.Run.EyeM = G14Json::Num(Run, TEXT("eye_m"), 1.6f);
+		FString Stance;
+		Run->TryGetStringField(TEXT("stance"), Stance);
+		Out.Run.Stance = G14Json::Stance(Stance);
+		Out.Run.BrakeM = G14Json::Num(Run, TEXT("brake_m"));
+		Out.Run.TravelledM = G14Json::Num(Run, TEXT("travelled_m"));
+		Run->TryGetBoolField(TEXT("overrun"), Out.Run.bOverrun);
+		Out.Run.StepCount = static_cast<int32>(G14Json::Num(Run, TEXT("step")));
+	}
+
+	// hud.lure { target_id, pull, resist, resisting, dx_deg, dy_deg }
+	if (const TSharedPtr<FJsonObject> Hud = G14Json::Obj(Root, TEXT("hud")))
+	{
+		if (const TSharedPtr<FJsonObject> Lure = G14Json::Obj(Hud, TEXT("lure")))
+		{
+			Lure->TryGetStringField(TEXT("target_id"), Out.Lure.TargetId);
+			Out.Lure.Pull = G14Json::Num(Lure, TEXT("pull"));
+			Out.Lure.Resist = G14Json::Num(Lure, TEXT("resist"));
+			Lure->TryGetBoolField(TEXT("resisting"), Out.Lure.bResisting);
+			Out.Lure.OffsetYawDeg = G14Json::Num(Lure, TEXT("dx_deg"));
+			Out.Lure.OffsetPitchDeg = G14Json::Num(Lure, TEXT("dy_deg"));
+		}
 	}
 	return true;
 }

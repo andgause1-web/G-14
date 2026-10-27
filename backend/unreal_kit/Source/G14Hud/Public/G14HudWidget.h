@@ -53,6 +53,10 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "G14|HUD") void UpdateTargeting(const FG14ScanData& Scan, bool bTargetLock, bool bStableZone);
 	UFUNCTION(BlueprintImplementableEvent, Category = "G14|HUD") void ApplyObserverThrottle(int32 Tier, float CognitiveLoad);
 	UFUNCTION(BlueprintImplementableEvent, Category = "G14|HUD") void OnLinkChanged(bool bConnected);
+	// Live Vector Run: camera height, path splines, brake line, footstep cues
+	UFUNCTION(BlueprintImplementableEvent, Category = "G14|HUD") void UpdateRun(const FG14RunData& Run);
+	// Luciferic lure: offset the reticle by OffsetYaw/PitchDeg, show warning when Pull > 0.15
+	UFUNCTION(BlueprintImplementableEvent, Category = "G14|HUD") void UpdateLure(const FG14LureData& Lure);
 
 	UPROPERTY(BlueprintReadOnly, Category = "G14|HUD")
 	TObjectPtr<AG14TelemetryReceiver> Receiver;

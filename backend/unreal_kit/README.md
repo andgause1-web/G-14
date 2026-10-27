@@ -57,6 +57,20 @@ with a leader line, tags for the rest, keep a centre circle (25% of view width) 
 Widget Animations. `env { em_ut, thermal_c, imu_jitter_deg }` is compared against a recorded baseline (mean ± std);
 flag only values beyond 4σ and ≥5%.
 
+## Live Vector Run + body cues
+`run { mode, speed_mps, eye_m, stance, brake_m, travelled_m, overrun, step }` and `imu.head_height_m` arrive while a
+run is active (Hallway page). Set the camera Z to `EyeM` (stand = body height × 0.936, crouch × 0.58, prone 0.35 m),
+draw two floor splines ±0.55 m from the path centre and a dashed brake line at `BrakeM` (0.3 s reaction + v²/10).
+Tint cyan → amber above 4 m/s → red when `bOverrun`. `StepCount` increments once per footfall: play a footstep cue
+when it changes (gain by speed, softer when crouched, shuffle when prone). `bio.breath_hz` / `bio.breath_phase`
+(sin > 0 = inhale) drive breathing audio and visor fog. Bind `OnRunChanged` or implement `UpdateRun` on the widget.
+
+## Luciferic lure
+`hud.lure { target_id, pull, resist, resisting, dx_deg, dy_deg }`: the strongest luciferic entity pulls the reticle.
+`resist` = composure + active steadying (hold Space in the sim) + EEG alpha vs beta; `pull` is what is left (0..1).
+Offset the reticle by `dx_deg` / `dy_deg` (already scaled by pull) and show a lure warning when `pull > 0.15`.
+Implement `UpdateLure` on the widget or bind `OnLureChanged`.
+
 ## Later: real hardware
 Your ESP32/Teensy can publish the same JSON either by `POST /api/telemetry` or a WebSocket
 to `/api/ws/hud?role=publisher`, or you can point `ServerUrl` straight at a WebSocket server on the ESP32.

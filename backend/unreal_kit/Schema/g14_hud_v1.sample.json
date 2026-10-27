@@ -9,7 +9,9 @@
     "stasis_index": 0.94,
     "state": "STABLE"
   },
-  "imu": { "sensor": "BMI270", "yaw_deg": 4.2, "pitch_deg": -0.8, "roll_deg": 1.1 },
+  "imu": { "sensor": "BMI270", "yaw_deg": 4.2, "pitch_deg": -0.8, "roll_deg": 1.1, "head_height_m": 1.07 },
+  "bio": { "sensor": "MAX30102", "heart_rate_bpm": 96, "spo2": 97, "breath_hz": 0.41, "breath_phase": 2.36 },
+  "run": { "mode": "manual", "speed_mps": 1.9, "eye_m": 1.07, "stance": "crouch", "brake_m": 0.9, "travelled_m": 31.4, "overrun": false, "step": 42 },
   "scan": {
     "sensor": "TSL1401CL",
     "resonance": 0.35,
@@ -19,5 +21,6 @@
       { "id": "E-02", "class": "LUCIFERIC", "bearing_deg": 26.3, "elevation_deg": 2.4, "distance_m": 189.0, "threat": 0.0 }
     ]
   },
-  "hud": { "cognitive_load": 0.23, "throttle_tier": 0, "target_lock": false, "stable_zone": true }
+  "hud": { "cognitive_load": 0.23, "throttle_tier": 0, "target_lock": false, "stable_zone": true,
+    "lure": { "target_id": "E-02", "pull": 0.31, "resist": 0.58, "resisting": false, "dx_deg": 3.4, "dy_deg": 0.6 } }
 }

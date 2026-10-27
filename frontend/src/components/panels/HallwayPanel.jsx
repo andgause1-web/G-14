@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { X, ChevronsDown, ChevronsUp, Play, Pause, RotateCcw } from "lucide-react";
-import { SliderRow, ToggleRow } from "@/components/panels/SensorPanel";
+import { SliderRow, ToggleRow, BodyAudioRows } from "@/components/panels/SensorPanel";
 import { ENTITY_TYPES, ZONES, stepCloser, stepBack } from "@/lib/corridor";
 
 const MOODS = ["NEUTRAL", "SUBMITTED", "HOSTILE"];
@@ -95,6 +95,8 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
 
         <div className="group-title">OPERATOR <span className="jp">操作者</span></div>
         <SliderRow id="composure" label="Composure %" min={0} max={100} value={controls.composure} onChange={set} />
+        <div className="hint-text">Pygmies and Wraiths are luciferic: inside ~60 m they pull the crosshair. Composure, calm EEG and holding Space resist.</div>
+        <BodyAudioRows controls={controls} set={set} />
         <SliderRow id="yaw" label="Yaw °" min={-30} max={30} value={controls.yaw} onChange={set} />
         <SliderRow id="pitch" label="Pitch °" min={-15} max={15} value={controls.pitch} onChange={set} />
         <ToggleRow id="auto-sway" label="Natural head motion (breathing + drift)" checked={controls.autoSway} onChange={(v) => set("autoSway", v)} />

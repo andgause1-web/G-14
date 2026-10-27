@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
 import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT, RUN } from "@/lib/corridor";
 import { RunVectors, RunChip } from "@/components/corridor/RunVectors";
+import { LureWrap, LureCue } from "@/components/hud/LureCue";
+import { useResistKey } from "@/hooks/useResistKey";
+import { useBodyAudio } from "@/hooks/useBodyAudio";
 import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue, AlertPips, TelemetryEdge, GazeDot, reveal } from "@/components/corridor/GhostHud";
 import { ThrottleHud } from "@/components/corridor/ThrottleHud";
 import { useSimulation } from "@/hooks/useSimulation";
@@ -143,6 +146,8 @@ export default function HallwayPage() {
     setControls((c) => ({ ...c, run: mode, keyRun: null, distance: c.run !== "off" ? Math.round(frameRef.current.lead_m) : c.distance }));
   }, [frameRef]);
   useRunKeys(controls.run === "manual", setControls);
+  useResistKey(setControls);
+  useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
 
   return (
     <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
@@ -171,7 +176,7 @@ export default function HallwayPage() {
         <div className="hud-slot slot-radar curve-left gaze-fade" style={{ opacity: ghost ? Math.max(gL, level >= 3 ? 0.45 : 0) : op("radar") }} data-testid="slot-radar">
           <RadarPanel frame={frame} frameRef={frameRef} maxRange={100} legend={CORRIDOR_LEGEND} />
         </div>
-        <div className="hud-slot slot-reticle gaze-fade" style={{ opacity: calm ? 0.3 : ghost && level < 2 ? 0.2 : 1 }}><LissajousReticle frameRef={frameRef} crosshair={ghost && level < 2 ? "dot" : view.crosshair} opacity={view.crosshairOpacity / 100} /></div>
+        <div className="hud-slot slot-reticle gaze-fade" style={{ opacity: calm ? 0.3 : ghost && level < 2 ? 0.2 : 1 }}><LureWrap frame={frame}><LissajousReticle frameRef={frameRef} crosshair={ghost && level < 2 ? "dot" : view.crosshair} opacity={view.crosshairOpacity / 100} /></LureWrap></div>
         {!ghost && <div className="hud-slot slot-target curve-right"><TargetReadout frame={frame} /><LoadoutPanel /></div>}
         {!ghost && <div className="hud-slot slot-rail curve-right"><StatusRail frame={frame} throttling /></div>}
         {ghost && level >= 2 && (
@@ -188,6 +193,7 @@ export default function HallwayPage() {
         {!frame.hud.observer_filter && <div className="raw-warning" data-testid="raw-feed-warning">RAW ANOMALY FEED · OBSERVER FILTER OFFLINE</div>}
         <RunChip frame={frame} />
       </div>
+      <LureCue frame={frame} tier={throttle ? frame.hud.obs_tier : tier} />
       <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">

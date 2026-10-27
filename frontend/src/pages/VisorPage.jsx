@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LureWrap, LureCue } from "@/components/hud/LureCue";
+import { useResistKey } from "@/hooks/useResistKey";
+import { useBodyAudio } from "@/hooks/useBodyAudio";
 import { EventLog } from "@/components/corridor/CorridorProgress";
-import { DEFAULT_CONTROLS, DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
+import { DEFAULT_CONTROLS, DEFAULT_VIEW, layerOpacity, makeVisorSim } from "@/lib/sim";
 import { useSimulation } from "@/hooks/useSimulation";
 import { WorldBackground, VisorFrame } from "@/components/hud/VisorFrame";
 import { EntityLayer } from "@/components/hud/EntityLayer";
@@ -39,7 +42,10 @@ export default function VisorPage() {
   const [activePreset, setActivePreset] = useState("calm");
   const [panel, setPanel] = useState(null);
   const [streaming, setStreaming] = useState(false);
-  const { frame, frameRef, streamStatus } = useSimulation(controls, streaming);
+  const builder = useMemo(makeVisorSim, []);
+  const { frame, frameRef, streamStatus } = useSimulation(controls, streaming, builder);
+  useResistKey(setControls);
+  useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
   const events = useStageLog(frame);
 
   const tier = view.throttling ? frame.hud.throttle_tier : 0;
@@ -59,7 +65,7 @@ export default function VisorPage() {
         <Layer show={L.radar} op={op("radar")} className="slot-radar curve-left" testId="slot-radar"><RadarPanel frame={frame} frameRef={frameRef} /></Layer>
         <div className="hud-slot slot-events curve-left obs-fade" style={{ opacity: tier >= 2 ? 0 : tier === 1 ? 0.5 : 0.85 }} data-testid="visor-event-log"><EventLog events={events.slice(0, 3)} /></div>
         <Layer show={L.reticle} op={op("reticle")} className="slot-reticle" testId="slot-reticle">
-          <LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} />
+          <LureWrap frame={frame}><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></LureWrap>
         </Layer>
         <div className="hud-slot slot-target curve-right">
           {L.reticle && <div style={{ opacity: op("reticle") }} data-testid="slot-target"><TargetReadout frame={frame} /></div>}
@@ -70,10 +76,11 @@ export default function VisorPage() {
           G-14 // RIG v3.7 · SEQ {String(frame.seq).padStart(5, "0")} · LINK {streamStatus === "live" ? "STREAMING" : "LOCAL SIM"}
         </div>
       </div>
+      <LureCue frame={frame} tier={tier} />
       <VisorFrame overload={tier === 2} scanlines={view.scanlines} />
       <TopBar onSensors={() => setPanel(panel === "sensors" ? null : "sensors")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} />
       <div className="visor-hint">
-        PRESET <b data-testid="active-preset-label">{activePreset ? activePreset.toUpperCase() : "CUSTOM"}</b> · ALL SENSOR DATA SIMULATED
+        PRESET <b data-testid="active-preset-label">{activePreset ? activePreset.toUpperCase() : "CUSTOM"}</b> · HOLD SPACE TO STEADY · ALL SENSOR DATA SIMULATED
       </div>
       <SensorPanel open={panel === "sensors"} onClose={closePanel} controls={controls} setControls={setControls}
         view={view} setView={setView} activePreset={activePreset} setActivePreset={setActivePreset} />

@@ -55,6 +55,47 @@ struct FG14IMUData
 	UPROPERTY(BlueprintReadOnly, Category = "G14|IMU") float Yaw = 0.f;   // -180..180
 	UPROPERTY(BlueprintReadOnly, Category = "G14|IMU") float Pitch = 0.f; // -90..90
 	UPROPERTY(BlueprintReadOnly, Category = "G14|IMU") float Roll = 0.f;  // -180..180
+	// Optional: eye height above floor in metres (BMI270 + baro / stance). <0 = not sent
+	UPROPERTY(BlueprintReadOnly, Category = "G14|IMU") float HeadHeightM = -1.f;
+};
+
+UENUM(BlueprintType)
+enum class EG14Stance : uint8
+{
+	Stand,
+	Crouch,
+	Prone
+};
+
+// Live Vector Run (hallway) — movement state; drive camera height, path splines, footstep audio
+USTRUCT(BlueprintType)
+struct FG14RunData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") FString Mode = TEXT("off"); // off | manual | auto
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") float SpeedMps = 0.f;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") float EyeM = 1.6f;          // eye height, metres
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") EG14Stance Stance = EG14Stance::Stand;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") float BrakeM = 0.f;         // reaction + v^2 / 2a
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") float TravelledM = 0.f;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") bool bOverrun = false;      // hostile inside brake distance
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") int32 StepCount = 0;        // increments once per footfall
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Run") bool bActive = false;
+};
+
+// Luciferic lure — crosshair pull toward a false-light entity, resisted by composure
+USTRUCT(BlueprintType)
+struct FG14LureData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Lure") FString TargetId;          // empty = none
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Lure") float Pull = 0.f;          // 0..1 after resistance
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Lure") float Resist = 0.f;        // 0..1 (composure + space + alpha/beta)
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Lure") bool bResisting = false;   // operator is actively steadying
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Lure") float OffsetYawDeg = 0.f;  // add to reticle position
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Lure") float OffsetPitchDeg = 0.f;
 };
 
 USTRUCT(BlueprintType)
@@ -113,6 +154,8 @@ struct FG14BioData
 
 	UPROPERTY(BlueprintReadOnly, Category = "G14|Bio") int32 HeartRateBpm = 0;
 	UPROPERTY(BlueprintReadOnly, Category = "G14|Bio") int32 SpO2 = 0;
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Bio") float BreathHz = 0.23f;     // breaths per second
+	UPROPERTY(BlueprintReadOnly, Category = "G14|Bio") float BreathPhase = 0.f;    // radians; sin>0 = inhale
 };
 
 USTRUCT(BlueprintType)
@@ -130,4 +173,6 @@ struct FG14HudFrame
 	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14HudState Hud;
 	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14BioData Bio;
 	UPROPERTY(BlueprintReadOnly, Category = "G14") FString Zone;
+	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14RunData Run;
+	UPROPERTY(BlueprintReadOnly, Category = "G14") FG14LureData Lure;
 };
