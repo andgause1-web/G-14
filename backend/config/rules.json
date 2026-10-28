@@ -448,5 +448,135 @@
         }
       }
     }
+  },
+  "turret": {
+    "deploy_s": 3,
+    "arc_deg": 70,
+    "track_rate_dps": 90,
+    "tilt_target_m": 1.0,
+    "confidence": {
+      "base": 96,
+      "per_m": 0.9,
+      "jitter_penalty": 25,
+      "aim_error_penalty": 1.5,
+      "noise": 2
+    },
+    "battery": {
+      "idle_per_s": 0.04,
+      "acoustic_per_s": 0.5,
+      "laser_per_pulse": 5,
+      "peltier_per_s": 0.35,
+      "peltier_cutoff_pct": 20
+    },
+    "heat": {
+      "ambient_c": 22,
+      "max_c": 85,
+      "acoustic_per_s": 2.2,
+      "laser_per_pulse": 16,
+      "passive_cool_per_s": 0.6,
+      "peltier_cool_per_s": 5,
+      "throttle_from_c": 60,
+      "peltier_on_c": 45,
+      "peltier_max_on_s": 10,
+      "peltier_cooldown_s": 4
+    },
+    "pulse_budget": 12,
+    "acoustic": {
+      "cone_deg": 30,
+      "range_m": 25,
+      "freq_min_hz": 60,
+      "freq_max_hz": 2000,
+      "band_width_hz": 160,
+      "stagger_per_s": 0.45,
+      "stagger_decay_per_s": 0.15,
+      "resist_drop_per_s": 0.22,
+      "push_per_s": 4,
+      "push_decay_per_s": 0.6
+    },
+    "laser": {
+      "range_m": 40,
+      "cooldown_s": 8,
+      "ignition_window_ms": 100,
+      "ignition_success": 0.93,
+      "max_target_mps": 10,
+      "finish_resist_below": 0.35,
+      "damage_unprimed": 0.3,
+      "stagger_add": 0.3
+    },
+    "resonance": {
+      "golem": {
+        "hz": 528,
+        "effect": "stall",
+        "strength": 1,
+        "stall_s": 4
+      },
+      "pygmy": {
+        "hz": 1400,
+        "effect": "repel",
+        "strength": 1
+      },
+      "gnome": {
+        "hz": 1400,
+        "effect": "repel",
+        "strength": 0.8
+      },
+      "wraith": {
+        "hz": 180,
+        "effect": "weak",
+        "strength": 0.25,
+        "decoy_mult": 3,
+        "decoy_threat_mult": 0.4
+      },
+      "boss": {
+        "hz": 60,
+        "effect": "weak",
+        "strength": 0.08
+      }
+    },
+    "egregore_tone": {
+      "strength": 0.15,
+      "pull_reduction": 0.5
+    },
+    "player": {
+      "range_m": 6,
+      "stasis_drain_per_s": 1.5,
+      "dampen_factor": 0.25,
+      "dampen_cue_factor": 0.4
+    },
+    "possession": {
+      "range_m": 20,
+      "drain_per_s": 6,
+      "resist_gain_per_s": 9,
+      "shutdown_hold_s": 2.5,
+      "jitter_deg": 4,
+      "drift_dps": 25,
+      "turned_player_drain_per_s": 4
+    },
+    "modules": {
+      "none": {
+        "label": "EMPTY DOCK",
+        "cone_mult": 1,
+        "range_mult": 1,
+        "decoy": false
+      },
+      "g12_wide": {
+        "label": "G-12 WIDE CONE",
+        "cone_mult": 1.6,
+        "range_mult": 0.85,
+        "decoy": false
+      },
+      "g12_long": {
+        "label": "G-12 LONG RANGE",
+        "cone_mult": 0.7,
+        "range_mult": 1.5,
+        "decoy": false
+      },
+      "g12_decoy": {
+        "label": "G-12 THERMAL DECOY",
+        "cone_mult": 1,
+        "range_mult": 1,
+        "decoy": true
+      }
+    }
   }
 }

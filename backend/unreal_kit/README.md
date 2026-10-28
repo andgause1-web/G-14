@@ -71,6 +71,20 @@ when it changes (gain by speed, softer when crouched, shuffle when prone). `bio.
 Offset the reticle by `dx_deg` / `dy_deg` (already scaled by pull) and show a lure warning when `pull > 0.15`.
 Implement `UpdateLure` on the widget or bind `OnLureChanged`.
 
+## G-13 Wolf-Trap turret (sim → hardware)
+The browser sim publishes `turret_battery`, `turret_temp`, `turret_heading`, `turret_tilt`, `turret_confidence`,
+`turret_ignition_status` (0 idle, 1 verifying, 2 verified, -1 failed, -2 snowball abort) and `turret_link` on the same bus as
+the helmet. Each channel can be switched to SERIAL; when the real turret answers, its values replace the sim, and if it goes
+quiet for 500 ms the HUD falls back to SIM and tags the readout. Mapping when the hardware exists:
+- **Battery**: 4S LiPo through an INA226 (voltage/current). It sheds load in this order: the Peltier first, then the acoustic driver.
+- **Temp / Peltier**: an NTC on the driver heatsink. The Peltier has its own on-time limit and cooldown, from `rules.turret.heat`.
+- **Pan / tilt**: servo feedback plus the turret BMI270 for beam stabilisation; the heading is sent in the helmet's yaw frame.
+- **Tracking confidence**: TSL1401CL line-scan SNR. The FPGA gates the laser pulse to the camera exposure; ignition is verified
+  only if plasma UV is seen inside `laser.ignition_window_ms`, and the shot aborts above `laser.max_target_mps` (snowball rule).
+- **Link / module**: the pogo-pin dock carries power, UART and an I²C ID EEPROM, so the helmet knows which G-12 module is docked.
+- **Helmet side**: the ESP32 bridge forwards turret frames to the helmet as `{channel, value, unit, ts, source:"serial", quality}`.
+  Bone-conduction cues and the Dampen toggle stay on the helmet; Unreal reads the same JSON over `/api/ws/hud`.
+
 ## Later: real hardware
 Your ESP32/Teensy can publish the same JSON either by `POST /api/telemetry` or a WebSocket
 to `/api/ws/hud?role=publisher`, or you can point `ServerUrl` straight at a WebSocket server on the ESP32.

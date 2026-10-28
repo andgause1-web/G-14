@@ -101,6 +101,7 @@ export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
   yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "throttle", audio: true, gaze: 0, mouseGaze: false, loadManual: false, load: 30,
   run: "off", speed: 0, bodyHeight: 178, stance: "stand", keyRun: null, resist: false, bodyAudio: false, bodyVol: 50,
+  turretMode: "acoustic", toneHz: 528, turretArmed: true, turretModule: "none", dampen: false, turretCmd: { n: 0 }, turretShutdown: false,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 
@@ -173,6 +174,22 @@ function autoRun(lead, nearest) {
 }
 
 
+// turret control state on a contact: repel push, stall, stagger/primed, lowered resist, thermal decoy
+function applyTurret(e, tfx, T) {
+  const x = tfx?.ent[e.id];
+  if (tfx?.decoy && e.type === "wraith") e.threat = r(e.threat * T.resonance.wraith.decoy_threat_mult);
+  if (!x) return e;
+  e.distance_m = r(e.distance_m + x.push, 1);
+  e.stagger = r(x.stagger, 2);
+  e.resist = r(x.resist, 2);
+  e.primed = x.stagger >= 1;
+  if (x.stall > 0) {
+    e.disposition = "STALLED";
+    e.threat = r(e.threat * 0.2);
+  }
+  return e;
+}
+
 export function makeCorridorSim() {
   const clock = simClock();
   let lead = DEFAULT_CORRIDOR.distance;
@@ -199,7 +216,7 @@ export function makeCorridorSim() {
   return {
     getState: () => state,
     setState: (s) => clock.set(s),
-    step(c, t0, rules, fx) {
+    step(c, t0, rules, fx, tfx) {
       const t = clock.tick(t0, restore);
       const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
       last = t;
@@ -247,7 +264,9 @@ export function makeCorridorSim() {
       const imu = headMotion(c, t, { phase, amp: speed > 0.15 ? 0.12 + speed * 0.12 : 0, breathPhase: breath });
       const TH = rules.threat;
       const zone = ZONES[c.zone];
-      const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t, eye, TH));
+      const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t, eye, TH))
+        .filter((e) => !tfx?.ent[e.id]?.killed)
+        .map((e) => applyTurret(e, tfx, rules.turret));
       // contact priority: threat weight x (1 / distance) x approach-speed bonus
       entities.forEach((e) => {
         const p = prevD[e.id];

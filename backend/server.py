@@ -165,7 +165,7 @@ async def unreal_zip():
 
 # ---------- rules config (hot-reloadable) ----------
 RULES_PATH = ROOT_DIR / "config" / "rules.json"
-RULES_KEYS = {"telemetry", "throttle", "cog_load", "lure", "threat", "possession"}
+RULES_KEYS = {"telemetry", "throttle", "cog_load", "lure", "threat", "possession", "turret"}
 
 
 def rules_payload() -> Dict[str, Any]:

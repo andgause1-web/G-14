@@ -16,10 +16,17 @@ export const CHANNELS = [
   { id: "temp", label: "THERMAL", unit: "°C", min: 10, max: 30, sensor: "MLX90640" },
   { id: "em_field", label: "EM FIELD", unit: "µT", min: 30, max: 120, sensor: "EM coil" },
   { id: "link_status", label: "LINK", unit: "q", min: 0, max: 1, sensor: "ESP32" },
+  { id: "turret_battery", label: "TURRET BATTERY", unit: "%", min: 0, max: 100, sensor: "4S LiPo / INA226" },
+  { id: "turret_temp", label: "TURRET TEMP", unit: "°C", min: 15, max: 90, sensor: "Peltier NTC" },
+  { id: "turret_heading", label: "TURRET PAN", unit: "°", min: -90, max: 90, sensor: "pan servo" },
+  { id: "turret_tilt", label: "TURRET TILT", unit: "°", min: -20, max: 30, sensor: "tilt servo" },
+  { id: "turret_confidence", label: "TRACK CONF", unit: "%", min: 0, max: 100, sensor: "TSL1401CL" },
+  { id: "turret_ignition_status", label: "IGNITION", unit: "code", min: -2, max: 2, sensor: "FPGA" },
+  { id: "turret_link", label: "TURRET LINK", unit: "q", min: 0, max: 1, sensor: "pogo dock" },
 ];
 export const CH = Object.fromEntries(CHANNELS.map((c) => [c.id, c]));
 // cog_load and stasis are derived each frame (compose / possession) and resolved after the sensors
-export const SENSOR_IDS = CHANNELS.filter((c) => c.id !== "cog_load" && c.id !== "stasis").map((c) => c.id);
+export const SENSOR_IDS = CHANNELS.filter((c) => c.id !== "cog_load" && c.id !== "stasis" && !c.id.startsWith("turret_")).map((c) => c.id);
 export const SOURCES = ["sim", "replay", "serial"];
 const HIST_N = 90;
 const HIST_MS = 100;

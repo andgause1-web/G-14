@@ -78,7 +78,7 @@ export function layoutContacts(frame, tier, W, H, prevTop = [], { types = ENTITY
 
 const Card = ({ p }) => (
   <div className="obs-card" style={{ left: p.lx, top: p.ly, width: p.w, "--ent": p.T.color, "--tone": tone(p.e.threat) }} data-testid={`obs-card-${p.e.id}`}>
-    <div className="oc-top"><span>{p.e.id} · {p.e.label ?? p.T.name}</span><span>{p.e.stage}</span></div>
+    <div className="oc-top"><span>{p.e.id} · {p.e.label ?? p.T.name}</span><span>{p.e.primed ? <b className="primed-tag" data-testid={`primed-tag-${p.e.id}`}>PRIMED</b> : p.e.stage}</span></div>
     <div className="oc-row">
       <b>{Math.round(p.e.distance_m)} m</b> · <b className="oc-threat">{p.e.disposition === "HOSTILE" ? threatLabel(p.e.threat) : p.e.disposition}</b>
       {p.e.approach_mps > 0.5 && <> · ▼{p.e.approach_mps} m/s</>}
@@ -90,7 +90,7 @@ const Card = ({ p }) => (
 
 const Tag = ({ p }) => (
   <div className="obs-tag" style={{ left: p.lx, top: p.ly, "--ent": p.T.color, "--tone": tone(p.e.threat) }} data-testid={`obs-tag-${p.e.id}`}>
-    <i /> {Math.round(p.e.distance_m)}
+    <i /> {Math.round(p.e.distance_m)}<small className="u-label">m</small>{p.e.primed && <b className="primed-tag" data-testid={`primed-tag-${p.e.id}`}>PRIMED</b>}{p.e.disposition === "STALLED" && <b className="stalled-tag">STALL</b>}
   </div>
 );
 

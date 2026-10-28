@@ -7,6 +7,7 @@ import { Recorder, MAX_MS } from "@/lib/recorder";
 import { Player, parseSession } from "@/lib/replay";
 import { makeEventDetector } from "@/lib/gameEvents";
 import { makePossession } from "@/lib/possession";
+import { makeTurret, TURRET_CH } from "@/lib/turret";
 import { useRules } from "@/lib/rules";
 
 const CHUNK = 2000;
@@ -28,6 +29,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
   controlsRef.current = controls;
   const poss = useRef(null);
   if (!poss.current) poss.current = makePossession();
+  const turretRef = useRef(scene === "hallway" ? makeTurret() : null);
   const rulesRef = useRef(rules);
   rulesRef.current = rules;
   const { version } = useRules();
@@ -66,7 +68,8 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
       const R = rulesRef.current;
       const c = controlsRef.current;
       const P = poss.current;
-      const out = sim.step(c, (now - t0) / 1000, R, P.fx());
+      const TU = turretRef.current;
+      const out = sim.step(c, (now - t0) / 1000, R, P.fx(), TU?.fx());
       bus.publishSim(out.sim, now);
       const player = playerRef.current;
       let world = out.world;
@@ -80,22 +83,35 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
       prevNow = now;
       const ctx = { bus, now };
       const tel = bus.resolveAll(SENSOR_IDS, now, R.telemetry);
+      if (TU) world = { ...world, turretFx: TU.fx() };
       let fx;
       if (game?.fx) {
         P.setState(game);
         tel.stasis = bus.resolve("stasis", now, R.telemetry);
         fx = game.fx;
       } else fx = P.step(dtS, tel, world, R, ctx, scene === "city" ? "visor" : "corridor");
+      let tfx = null;
+      const turretEvents = [];
+      if (TU && game?.turret) {
+        TU.setState(game.turret);
+        TURRET_CH.forEach((k) => { tel[k] = bus.resolve(k, now, R.telemetry); });
+        tfx = TU.fx();
+      } else if (TU) {
+        const res = TU.step(dtS, tel, world, c, R, ctx);
+        tfx = res.fx;
+        turretEvents.push(...res.events);
+      }
       const f = compose(world, tel, c, R, ctx, seq, fx);
       f.possession = fx;
+      f.turret = tfx;
       f.telemetry = bus.meta();
       f.replay = player ? { t_ms: Math.round(player.t), duration_ms: player.duration, playing: player.playing, speed: player.speed } : null;
       f.recording = rec.active;
-      detectRef.current(f, now, R.lure.show_threshold).forEach(([type, data]) => {
+      [...turretEvents, ...detectRef.current(f, now, R.lure.show_threshold)].forEach(([type, data]) => {
         rec.event(now, type, data);
         if (!player) eventsRef.current = [{ type, data, k: now + Math.random() }, ...eventsRef.current].slice(0, 30);
       });
-      if (!player) rec.tick(now, tel, world, sim.getState(), c, P.getState());
+      if (!player) rec.tick(now, tel, world, sim.getState(), c, { ...P.getState(), turret: TU?.getState() ?? null });
       if (rec.active && rec.elapsed(now) > MAX_MS) {
         toast.warning("Recording hit the 10-minute limit");
         stopRef.current();
@@ -160,7 +176,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
     if (s.meta.scene !== scene) throw new Error(`Recorded on ${s.meta.scene} — open that page to replay it`);
     if (rec.active) rec.stop(performance.now());
     if (!routesRef.current) routesRef.current = bus.routeAll("replay");
-    if (!liveGameRef.current) liveGameRef.current = poss.current.getState();
+    if (!liveGameRef.current) liveGameRef.current = { poss: poss.current.getState(), turret: turretRef.current?.getState() };
     const p = new Player(s);
     p.playing = true;
     playerRef.current = p;
@@ -170,7 +186,10 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
 
   // eject returns to the live state from before the replay; branch keeps the replayed state
   const eject = useCallback((keepReplayState = false) => {
-    if (!keepReplayState && liveGameRef.current) poss.current.setState(liveGameRef.current);
+    if (!keepReplayState && liveGameRef.current) {
+      poss.current.setState(liveGameRef.current.poss);
+      turretRef.current?.setState(liveGameRef.current.turret);
+    }
     liveGameRef.current = null;
     playerRef.current = null;
     if (routesRef.current) bus.restoreRoutes(routesRef.current);

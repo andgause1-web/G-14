@@ -36,7 +36,7 @@ export function usePossessionAudio(frameRef, enabled, volume) {
     let nextCue = 0;
     const loop = () => {
       const f = frameRef.current.possession;
-      out.gain.value = (volume / 100) * 0.8;
+      out.gain.value = (volume / 100) * 0.8 * (frameRef.current.turret?.cue_scale ?? 1);
       if (f) {
         const now = ctx.currentTime;
         if (f.stage !== stage) {

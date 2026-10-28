@@ -4,6 +4,7 @@ import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, composeCorridor, CORRI
 import { useRules } from "@/lib/rules";
 import { TapeDeck } from "@/components/telemetry/TapeDeck";
 import { PossessionHud } from "@/components/hud/PossessionHud";
+import { TurretScene, TurretStrip, TurretWarning } from "@/components/corridor/TurretHud";
 import { useHeadLook } from "@/hooks/useHeadLook";
 import { usePossessionAudio } from "@/hooks/usePossessionAudio";
 import { BootScreen } from "@/components/telemetry/BootScreen";
@@ -26,6 +27,30 @@ import { DataFeed } from "@/components/panels/DataFeed";
 import { TopBar } from "@/components/TopBar";
 
 const STEP_MS = 3500;
+
+export const turretCmd = (setControls, type) => setControls((c) => ({ ...c, turretCmd: { n: c.turretCmd.n + 1, type } }));
+
+// G deploy/confirm, F fire laser, M switch mode, hold T to shut the turret down
+function useTurretKeys(setControls) {
+  useEffect(() => {
+    const down = (ev) => {
+      if (ev.target.closest("input, textarea")) return;
+      const k = ev.key.toLowerCase();
+      if (ev.repeat && k !== "t") return;
+      if (k === "g") turretCmd(setControls, "deploy");
+      else if (k === "f") turretCmd(setControls, "fire");
+      else if (k === "m") setControls((c) => ({ ...c, turretMode: c.turretMode === "acoustic" ? "laser" : "acoustic" }));
+      else if (k === "t") setControls((c) => (c.turretShutdown ? c : { ...c, turretShutdown: true }));
+    };
+    const up = (ev) => { if (ev.key.toLowerCase() === "t") setControls((c) => ({ ...c, turretShutdown: false })); };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [setControls]);
+}
 
 // W = walk, +Shift = sprint, C = crouch, X = prone; run keys pass the possession input filter
 function useRunKeys(active, setControls, frameRef) {
@@ -164,6 +189,7 @@ function Hallway({ rules }) {
     setControls((c) => ({ ...c, run: mode, keyRun: null, distance: c.run !== "off" ? Math.round(frameRef.current.lead_m) : c.distance }));
   }, [frameRef]);
   useRunKeys(controls.run === "manual", setControls, frameRef);
+  useTurretKeys(setControls);
   useResistKey(setControls);
   useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
   usePossessionAudio(frameRef, controls.bodyAudio, controls.bodyVol);
@@ -174,6 +200,7 @@ function Hallway({ rules }) {
       <CorridorBackground frameRef={frameRef} zone={zone} />
       {ghost && <GhostVectors frame={frame} />}
       <RunVectors frame={frame} />
+      <TurretScene frame={frame} />
       <CorridorEntityLayer frame={frame} tier={tier} />
       {ghost && <Periphery frame={frame} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
@@ -216,6 +243,8 @@ function Hallway({ rules }) {
       <LureCue frame={frame} tier={throttle ? frame.hud.obs_tier : tier} />
       <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />
       <PossessionHud frame={frame} />
+      <TurretStrip frame={frame} onDeploy={() => turretCmd(setControls, "deploy")} />
+      <TurretWarning frame={frame} />
       <TapeDeck engine={engine} scene="hallway" />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">

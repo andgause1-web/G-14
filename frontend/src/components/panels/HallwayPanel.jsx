@@ -52,6 +52,27 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
         )}
         <div className="hint-text">Manual: W walk, hold Shift to sprint, C crouch, X prone (otherwise cruise speed slider). Auto: scripted walk → sprint → slow → crouch near contacts. Speed raises load tier; path lines and brake line follow speed and eye height.</div>
 
+        <div className="group-title">G-13 WOLF-TRAP TURRET <span className="jp">哨戒</span></div>
+        <div className="preset-row">
+          <button className="preset-btn" onClick={() => setControls((c) => ({ ...c, turretCmd: { n: c.turretCmd.n + 1, type: "deploy" } }))} data-testid="turret-deploy-button">DEPLOY / CONFIRM (G)</button>
+          <button className="preset-btn" onClick={() => setControls((c) => ({ ...c, turretCmd: { n: c.turretCmd.n + 1, type: "recall" } }))} data-testid="turret-recall-button">RECALL</button>
+        </div>
+        <div className="preset-row">
+          {["acoustic", "laser"].map((m) => (
+            <button key={m} className={`preset-btn ${controls.turretMode === m ? "active-cross" : ""}`} onClick={() => set("turretMode", m)} data-testid={`turret-mode-${m}-button`}>{m === "acoustic" ? "WOLF-TONE" : "LASER"}</button>
+          ))}
+          <button className="preset-btn" onClick={() => setControls((c) => ({ ...c, turretCmd: { n: c.turretCmd.n + 1, type: "fire" } }))} data-testid="turret-fire-button">FIRE PULSE (F)</button>
+        </div>
+        {controls.turretMode === "acoustic" && <SliderRow id="toneHz" label="Wolf-tone Hz (golem 528 · pygmy 1400 · wraith 180)" min={60} max={2000} value={controls.toneHz} onChange={set} />}
+        <ToggleRow id="turret-armed" label="Hold tone (acoustic armed)" checked={controls.turretArmed} onChange={(v) => set("turretArmed", v)} />
+        <ToggleRow id="dampen" label="Dampen (hearing protection, softer bone cues)" checked={controls.dampen} onChange={(v) => set("dampen", v)} />
+        <div className="preset-row">
+          {[["none", "EMPTY"], ["g12_wide", "WIDE"], ["g12_long", "LONG"], ["g12_decoy", "DECOY"]].map(([k, l]) => (
+            <button key={k} className={`preset-btn ${controls.turretModule === k ? "active-cross" : ""}`} onClick={() => set("turretModule", k)} data-testid={`turret-module-${k}-button`}>{l}</button>
+          ))}
+        </div>
+        <div className="hint-text">Drops at your feet: G once for the ghost preview, again to deploy (3 s). Wolf-tone staggers, stalls, repels and lowers resist; the laser only finishes PRIMED or low-resist contacts and aborts above 10 m/s. Hold T to shut down a possessed turret. M switches mode.</div>
+
         <div className="group-title">ZONE ROOM <span className="jp">区域</span></div>
         <div className="zone-grid">
           {Object.entries(ZONES).map(([k, z]) => (

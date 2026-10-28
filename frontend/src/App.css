@@ -665,3 +665,35 @@
 .pp-rows > span.diff { opacity: 1; color: #ffaa00; }
 .pp-rows b { font-weight: 400; color: #fff; }
 @media (max-width: 900px) { .pp-grid { grid-template-columns: 1fr; } }
+
+/* G-13 turret */
+.turret-scene { position: absolute; inset: 0; z-index: 5; pointer-events: none; overflow: visible; }
+.ts-ghost rect, .ts-ghost ellipse, .ts-ghost path { fill: rgba(0, 240, 255, 0.06); stroke: var(--cyan); stroke-width: 1.2; stroke-dasharray: 4 3; animation: alert-flash 1.6s steps(2) infinite; }
+.st-deploying .ts-ghost rect, .st-deploying .ts-ghost ellipse { stroke-dasharray: none; animation: none; }
+.ts-deploy { fill: none; stroke: var(--cyan); stroke-width: 2; transform: rotate(-90deg); transition: stroke-dashoffset 120ms linear; }
+.ts-cone { fill: rgba(126, 243, 255, 0.07); stroke: rgba(126, 243, 255, 0.35); stroke-width: 1; animation: ts-wave 0.8s ease-in-out infinite; }
+@keyframes ts-wave { 0%, 100% { fill-opacity: 0.6; } 50% { fill-opacity: 1.4; } }
+.ts-laser { stroke: #ff2a4b; stroke-width: 2; filter: drop-shadow(0 0 6px #ff2a4b); }
+.ts-laser.ign-failed, .ts-laser.ign-aborted { stroke: #ffaa00; stroke-dasharray: 6 6; }
+.ts-turned { fill: none; stroke: var(--red); stroke-width: 2; animation: alert-flash 0.6s steps(2) infinite; }
+.turret-strip { position: absolute; right: 6.5%; bottom: 23%; z-index: 14; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; font-size: 8px; letter-spacing: 0.16em; color: rgba(207, 239, 255, 0.75); --st: rgba(207, 239, 255, 0.5); }
+.turret-strip.tone-good { --st: #00ff9d; } .turret-strip.tone-info { --st: var(--cyan); } .turret-strip.tone-bad { --st: var(--red); }
+.turret-strip { pointer-events: auto; }
+.ts-tag { cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 2px 6px; border: 1px solid var(--st); color: var(--st); background: rgba(4, 8, 14, 0.6); cursor: default; }
+.ts-tag i { width: 5px; height: 5px; border-radius: 50%; background: var(--st); box-shadow: 0 0 6px var(--st); }
+.ts-mini { display: flex; gap: 4px; }
+.tsb { display: inline-block; width: 40px; height: 2px; background: rgba(0, 240, 255, 0.15); }
+.tsb > i { display: block; height: 100%; background: #00ff9d; transition: width 300ms ease; }
+.tsb.heat > i { background: #ffaa00; }
+.turret-card { position: absolute; bottom: calc(100% + 6px); right: 0; width: 270px; display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 8px; background: rgba(4, 8, 14, 0.88); border: 1px solid var(--st); backdrop-filter: blur(14px); opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity 300ms ease, transform 300ms ease; }
+.turret-strip:hover .turret-card { opacity: 1; transform: translateY(0); }
+.tc-img { background: #dfe3e6; display: grid; place-items: center; }
+.tc-img img { width: 100%; mix-blend-mode: multiply; }
+.tc-rows { display: flex; flex-direction: column; gap: 2px; font-size: 8px; }
+.tc-rows > span { display: flex; justify-content: space-between; gap: 6px; }
+.tc-rows b { font-weight: 400; color: #fff; }
+.tc-rows em { font-style: normal; color: #ffaa00; }
+.tc-rows .ign-verified { color: #00ff9d; } .tc-rows .ign-failed, .tc-rows .ign-aborted { color: #ffaa00; }
+.turret-warn { position: absolute; right: 2.2%; top: 24%; z-index: 14; font-size: 8px; letter-spacing: 0.2em; color: var(--red); text-shadow: 0 0 8px var(--red); writing-mode: vertical-rl; animation: alert-flash 1s steps(2) infinite; }
+.primed-tag { margin-left: 5px; padding: 0 4px; font-size: 7px; letter-spacing: 0.16em; color: #0a0a0a; background: #ffaa00; font-weight: 700; }
+.stalled-tag { margin-left: 5px; font-size: 7px; letter-spacing: 0.16em; color: var(--cyan); font-weight: 400; }

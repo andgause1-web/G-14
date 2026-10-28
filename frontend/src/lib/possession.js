@@ -36,6 +36,7 @@ export function makePossession() {
         let p = P.stasis.entity_drain_per_s * prof.drain * e.threat * clamp(1 - e.distance_m / range);
         // egregore pull scales with the number of other nearby contacts
         if (P.egregore.types.includes(e.type)) p *= 1 + P.egregore.contact_scale * (near.length - 1);
+        p *= 1 - (world.turretFx?.ent[e.id]?.damp ?? 0);
         pressure += p;
         if (p > domP) { domP = p; dom = e; }
       });
@@ -44,6 +45,7 @@ export function makePossession() {
       const hrDrain = Math.max(0, tel.hr_bpm.value - P.stasis.hr_above_bpm) * P.stasis.hr_drain_per_bpm_s;
       let rate = P.stasis.calm_gain_per_s * balance - hrDrain - pressure;
       if (rate > 0 && s.fatigued) rate *= R.fatigue_recovery_mult;
+      rate -= world.turretFx?.player_drain ?? 0;
       if (!s.takeover) s.pool = clamp(s.pool + rate * dt, 1, 100);
 
       bus.publishSim({ stasis: s.pool }, now);

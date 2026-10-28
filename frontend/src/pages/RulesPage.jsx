@@ -5,7 +5,7 @@ import { TopBar } from "@/components/TopBar";
 import { useRules } from "@/lib/rules";
 import { PossessionPresets } from "@/components/telemetry/PossessionPresets";
 
-const SECTIONS = ["telemetry", "throttle", "cog_load", "lure", "threat", "possession"];
+const SECTIONS = ["telemetry", "throttle", "cog_load", "lure", "threat", "possession", "turret"];
 
 function validate(text) {
   const obj = JSON.parse(text);
