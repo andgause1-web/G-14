@@ -1,3 +1,4 @@
+import { SimTag } from "@/components/telemetry/Units";
 const CARD = { 0: "N", 45: "NE", 90: "E", 135: "SE", 180: "S", 225: "SW", 270: "W", 315: "NW" };
 const PX = 6;
 const TICKS = Array.from({ length: 145 }, (_, i) => i * 5 - 360);
@@ -25,7 +26,7 @@ export const DynamicCompass = ({ frame }) => {
       </div>
       <div className="compass-read">
         <span>PITCH {pitch_deg.toFixed(1)}°</span>
-        <b data-testid="compass-heading-value">{String(Math.round(heading) % 360).padStart(3, "0")}°</b>
+        <b data-testid="compass-heading-value">{String(Math.round(heading) % 360).padStart(3, "0")}°<SimTag frame={frame} ch={["imu_yaw", "imu_pitch", "imu_roll"]} /></b>
         <span>ROLL {roll_deg.toFixed(1)}°</span>
       </div>
       <div className="jp center">動的コンパス · BMI270</div>

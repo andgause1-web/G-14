@@ -1,3 +1,4 @@
+import { U, SimTag } from "@/components/telemetry/Units";
 import { useCanvasLoop } from "@/hooks/useCanvasLoop";
 import { OPERATOR } from "@/lib/sim";
 
@@ -49,7 +50,7 @@ export const StasisMeter = ({ frame, frameRef }) => {
           <div className={`portrait ${stable ? "" : "is-alert"}`} data-testid="operator-portrait">
             <img src={OPERATOR.portrait} alt="Operator portrait" />
             <i className="portrait-scan" />
-            <span className="portrait-idx" data-testid="stasis-index-value">{Math.round(stasis_index * 100)}</span>
+            <span className="portrait-idx" data-testid="stasis-index-value">{Math.round(stasis_index * 100)}<U>%</U><SimTag frame={frame} ch="stasis" /></span>
           </div>
           <div className="portrait-name" data-testid="operator-callsign">{OPERATOR.callsign}</div>
           <div className="micro">{OPERATOR.rank}</div>
@@ -59,7 +60,7 @@ export const StasisMeter = ({ frame, frameRef }) => {
             <div key={b.k} className="band-row" data-testid={`eeg-band-${b.k}`}>
               <span className="band-name">{b.label}</span>
               <span className="band-bar"><i style={{ width: `${Math.min(100, bands[b.k] * 160)}%` }} /></span>
-              <span className="band-val">{Math.round(bands[b.k] * 100)}%</span>
+              <span className="band-val">{Math.round(bands[b.k] * 100)}<U>%</U><SimTag frame={frame} ch={`eeg_${b.k}`} /></span>
             </div>
           ))}
         </div>

@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useState } from "react";
+import { TelemetryPanel, DrawerTabs } from "@/components/telemetry/TelemetryPanel";
 import { X, Zap, Waves, Flame } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -49,7 +50,8 @@ export const BodyAudioRows = ({ controls, set }) => (
   </>
 );
 
-export const SensorPanel = memo(({ open, onClose, controls, setControls, view, setView, activePreset, setActivePreset }) => {
+export const SensorPanel = memo(({ open, onClose, controls, setControls, view, setView, activePreset, setActivePreset, telemetry }) => {
+  const [tab, setTab] = useState("controls");
   const set = (k, v) => { setControls((c) => ({ ...c, [k]: v })); setActivePreset(null); };
   const applyPreset = (k) => { setControls((c) => ({ ...c, ...PRESETS[k] })); setActivePreset(k); };
   return (
@@ -59,6 +61,8 @@ export const SensorPanel = memo(({ open, onClose, controls, setControls, view, s
         <button className="icon-btn" onClick={onClose} data-testid="sensor-panel-close-button"><X size={16} /></button>
       </div>
       <div className="drawer-body">
+        <DrawerTabs tab={tab} setTab={setTab} />
+        {tab === "telemetry" ? <TelemetryPanel telemetry={telemetry} /> : <>
         <div className="group-title">PRESETS</div>
         <div className="preset-row">
           {PRESET_BTNS.map(({ k, label, icon: Icon }) => (
@@ -109,6 +113,7 @@ export const SensorPanel = memo(({ open, onClose, controls, setControls, view, s
           <ToggleRow id="throttling" label="Observer throttling" checked={view.throttling} onChange={(v) => setView((s) => ({ ...s, throttling: v }))} />
           <ToggleRow id="scanlines" label="Visor scanlines" checked={view.scanlines} onChange={(v) => setView((s) => ({ ...s, scanlines: v }))} />
         </div>
+      </>}
       </div>
     </aside>
   );

@@ -4,13 +4,16 @@ import { Play, RotateCcw, CheckCircle2 } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { Switch } from "@/components/ui/switch";
 import { envReadings } from "@/lib/corridor";
+import { bus } from "@/lib/telemetry";
+import { useRules } from "@/lib/rules";
+import { U } from "@/components/telemetry/Units";
 import { useCanvasLoop } from "@/hooks/useCanvasLoop";
 
 const DURATION = 60;
 const CHANNELS = [
-  { k: "em_ut", key: "em", label: "EM FIELD", unit: "µT", sensor: "TSL1401CL / EM", color: "#00f0ff" },
-  { k: "thermal_c", key: "thermal", label: "THERMAL", unit: "°C", sensor: "THERMAL", color: "#ffaa00" },
-  { k: "imu_jitter_deg", key: "imu", label: "IMU JITTER", unit: "°", sensor: "BMI270", color: "#00ff9d" },
+  { k: "em_ut", ch: "em_field", key: "em", label: "EM FIELD", unit: "µT", sensor: "TSL1401CL / EM", color: "#00f0ff" },
+  { k: "thermal_c", ch: "temp", key: "thermal", label: "THERMAL", unit: "°C", sensor: "THERMAL", color: "#ffaa00" },
+  { k: "imu_jitter_deg", ch: "imu_jitter", key: "imu", label: "IMU JITTER", unit: "°", sensor: "BMI270", color: "#00ff9d" },
 ];
 
 const stats = (arr) => {
@@ -40,6 +43,10 @@ const Spark = ({ samples, color }) => {
 };
 
 export default function BaselinePage() {
+  const { rules } = useRules();
+  const cfgRef = useRef(null);
+  cfgRef.current = rules?.telemetry;
+  const [srcs, setSrcs] = useState({});
   const [running, setRunning] = useState(false);
   const [fast, setFast] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -53,9 +60,15 @@ export default function BaselinePage() {
     const speed = fast ? 10 : 1;
     const id = setInterval(() => {
       const t = ((performance.now() - t0) / 1000) * speed;
+      // quiet-room sim source -> bus; the baseline only reads resolved bus values
       const env = envReadings([], t);
+      const now = performance.now();
+      const noise = (k, a) => env[k] + (Math.random() - 0.5) * a;
+      bus.publishSim({ em_field: noise("em_ut", 0.6), temp: noise("thermal_c", 0.08), imu_jitter: noise("imu_jitter_deg", 0.02) }, now);
+      const tel = bus.resolveAll(CHANNELS.map((c) => c.ch), now, cfgRef.current);
+      setSrcs(Object.fromEntries(CHANNELS.map((c) => [c.key, tel[c.ch].fallback ? "SIM ⟲" : tel[c.ch].source.toUpperCase()])));
       CHANNELS.forEach((c) => {
-        const v = env[c.k] + (Math.random() - 0.5) * (c.k === "em_ut" ? 0.6 : c.k === "thermal_c" ? 0.08 : 0.02);
+        const v = tel[c.ch].value;
         samples.current[c.k].push(v);
         live.current[c.k].current = samples.current[c.k];
       });
@@ -71,6 +84,7 @@ export default function BaselinePage() {
     }, 100);
     return () => clearInterval(id);
   }, [running, fast]);
+  if (!rules) return <div className="unreal-page" data-testid="rules-loading" />;
 
   const start = () => {
     CHANNELS.forEach((c) => { samples.current[c.k] = []; live.current[c.k].current = []; });
@@ -97,9 +111,9 @@ export default function BaselinePage() {
         <section className="u-card">
           {CHANNELS.map((c) => (
             <div key={c.k} className="baseline-row" data-testid={`baseline-channel-${c.key}`}>
-              <div><div className="group-title" style={{ color: c.color }}>{c.label}</div><div className="micro">{c.sensor}</div></div>
+              <div><div className="group-title" style={{ color: c.color }}>{c.label}</div><div className="micro">{c.sensor} · <span data-testid={`baseline-source-${c.key}`}>{srcs[c.key] || "BUS"}</span></div></div>
               <Spark samples={live.current[c.k]} color={c.color} />
-              <div className="baseline-stat">{saved ? <>{saved[c.key].mean} {c.unit}<span>± {saved[c.key].std}</span></> : "—"}</div>
+              <div className="baseline-stat">{saved ? <>{saved[c.key].mean} <U>{c.unit}</U><span>± {saved[c.key].std} <U>{c.unit}</U></span></> : "—"}</div>
             </div>
           ))}
         </section>

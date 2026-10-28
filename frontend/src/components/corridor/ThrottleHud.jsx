@@ -161,7 +161,7 @@ export const ThrottleHud = ({ frame, frameRef, events, gaze, baseline, view }) =
       <F o={tier < 3 ? base(0) : 0} className="slot-baseline" testId="obs-baseline"><BaselineChip env={frame.env} baseline={baseline} /></F>
       <F o={tier === 0 ? Math.max(drift ? 1 : 0.25, gL) : 0} className="slot-stasis curve-left" testId="obs-stasis"><StasisMeter frame={frame} frameRef={frameRef} /></F>
       <F o={tier === 1 ? Math.max(drift ? 1 : 0.5, gL) : 0} className="slot-stasis-strip" testId="obs-stasis-strip">
-        <div className={`stasis-strip state-${frame.eeg.state.toLowerCase()}`}><i style={{ width: `${frame.eeg.stasis_index * 100}%` }} /><span>STASIS {Math.round(frame.eeg.stasis_index * 100)}</span></div>
+        <div className={`stasis-strip state-${frame.eeg.state.toLowerCase()}`}><i style={{ width: `${frame.eeg.stasis_index * 100}%` }} /><span>STASIS {Math.round(frame.eeg.stasis_index * 100)}<small className="u-label">%</small></span></div>
       </F>
       <F o={tier >= 1 ? 1 : base(gL)} className="slot-vitals" testId="obs-vitals"><VitalsChip frame={frame} /></F>
       <F o={tier <= 1 ? base(gL) : 0} className="slot-events curve-left" style={{ transform: tier >= 2 ? "translateX(-140%)" : "none" }} testId="obs-event-log"><EventLog events={events.slice(0, 3)} /></F>
@@ -173,7 +173,7 @@ export const ThrottleHud = ({ frame, frameRef, events, gaze, baseline, view }) =
       <F o={tier <= 1 ? Math.max(0.04, gR) : 0} className="slot-telemetry curve-right" testId="obs-telemetry"><TelemetryEdge frame={frame} /></F>
       <F o={tier < 3 ? 1 : 0} className="slot-reticle" testId="obs-reticle"><LureWrap frame={frame}><LissajousReticle frameRef={frameRef} crosshair={view.crosshair} opacity={view.crosshairOpacity / 100} /></LureWrap></F>
       <F o={tier < 3 ? 0.6 : 0} className="slot-pips" testId="obs-load">
-        <div className="obs-load">{[0, 1, 2, 3].map((t) => <i key={t} className={t <= tier ? `on t${tier}` : ""} />)}<span>LOAD {load} · T{tier}</span></div>
+        <div className="obs-load">{[0, 1, 2, 3].map((t) => <i key={t} className={t <= tier ? `on t${tier}` : ""} />)}<span>LOAD {load}<small className="u-label">%</small> · T{tier}</span></div>
       </F>
     </div>
   );

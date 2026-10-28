@@ -1,11 +1,13 @@
-import { memo } from "react";
+import { memo, useState } from "react";
+import { TelemetryPanel, DrawerTabs } from "@/components/telemetry/TelemetryPanel";
 import { X, ChevronsDown, ChevronsUp, Play, Pause, RotateCcw } from "lucide-react";
 import { SliderRow, ToggleRow, BodyAudioRows } from "@/components/panels/SensorPanel";
 import { ENTITY_TYPES, ZONES, stepCloser, stepBack } from "@/lib/corridor";
 
 const MOODS = ["NEUTRAL", "SUBMITTED", "HOSTILE"];
 
-export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset, onZone, onRun }) => {
+export const HallwayPanel = memo(({ open, onClose, controls, setControls, playing, setPlaying, onReset, onZone, onRun, telemetry }) => {
+  const [tab, setTab] = useState("controls");
   const set = (k, v) => setControls((c) => ({ ...c, [k]: v }));
   return (
     <aside className={`drawer drawer-right ${open ? "open" : ""}`} data-testid="hallway-panel">
@@ -14,6 +16,8 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
         <button className="icon-btn" onClick={onClose} data-testid="hallway-panel-close-button"><X size={16} /></button>
       </div>
       <div className="drawer-body">
+        <DrawerTabs tab={tab} setTab={setTab} />
+        {tab === "telemetry" ? <TelemetryPanel telemetry={telemetry} /> : <>
         <div className="group-title">HUD MODE <span className="jp">表示モード</span></div>
         <div className="preset-row">
           <button className={`preset-btn ${controls.mode === "throttle" ? "active-cross" : ""}`} onClick={() => set("mode", "throttle")} data-testid="mode-throttle-button">THROTTLE</button>
@@ -106,6 +110,7 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
           <ToggleRow key={k} id={`entity-${k}`} label={<><i className="dot" style={{ background: T.color }} /> {T.name}</>} checked={controls.show[k]}
             onChange={(v) => setControls((c) => ({ ...c, show: { ...c.show, [k]: v } }))} />
         ))}
+      </>}
       </div>
     </aside>
   );

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, PlainTextResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import zipfile
+import uuid
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -160,6 +161,103 @@ async def unreal_zip():
     buf.seek(0)
     return StreamingResponse(buf, media_type="application/zip",
                              headers={"Content-Disposition": "attachment; filename=G14Hud_UnrealKit.zip"})
+
+
+# ---------- rules config (hot-reloadable) ----------
+RULES_PATH = ROOT_DIR / "config" / "rules.json"
+RULES_KEYS = {"telemetry", "throttle", "cog_load", "lure", "threat"}
+
+
+def rules_payload() -> Dict[str, Any]:
+    text = RULES_PATH.read_text(encoding="utf-8")
+    return {"rules": json.loads(text), "version": int(RULES_PATH.stat().st_mtime * 1000)}
+
+
+def check_rules(rules: Any):
+    if not isinstance(rules, dict):
+        raise HTTPException(status_code=400, detail="Rules must be a JSON object")
+    missing = RULES_KEYS - set(rules)
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing sections: {', '.join(sorted(missing))}")
+    tiers = rules["throttle"].get("observer_tiers") if isinstance(rules["throttle"], dict) else None
+    if not isinstance(tiers, list) or not tiers or not all(isinstance(t, dict) and "tier" in t and "min_load" in t for t in tiers):
+        raise HTTPException(status_code=400, detail="throttle.observer_tiers must be a list of {tier, min_load}")
+
+
+class RulesBody(BaseModel):
+    rules: Dict[str, Any]
+
+
+@api_router.get("/rules")
+async def get_rules():
+    return await asyncio.to_thread(rules_payload)
+
+
+@api_router.put("/rules")
+async def put_rules(body: RulesBody):
+    check_rules(body.rules)
+    await asyncio.to_thread(RULES_PATH.write_text, json.dumps(body.rules, indent=2, ensure_ascii=False) + "\n", "utf-8")
+    return await asyncio.to_thread(rules_payload)
+
+
+# ---------- recorded sessions (JSON lines, stored in chunks) ----------
+class SessionCreate(BaseModel):
+    name: str
+    notes: str = ""
+    scene: str
+    duration_ms: int
+    line_count: int
+
+
+class SessionMeta(SessionCreate):
+    id: str
+    created_at: str
+    size: int = 0
+
+
+class ChunkBody(BaseModel):
+    idx: int
+    data: str
+
+
+@api_router.post("/sessions", response_model=SessionMeta)
+async def create_session(body: SessionCreate):
+    meta = SessionMeta(id=str(uuid.uuid4()), created_at=datetime.now(timezone.utc).isoformat(), **body.model_dump())
+    await db.sessions.insert_one(meta.model_dump())
+    return meta
+
+
+@api_router.post("/sessions/{sid}/chunks")
+async def add_chunk(sid: str, body: ChunkBody):
+    if not await db.sessions.find_one({"id": sid}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.session_chunks.update_one({"session_id": sid, "idx": body.idx},
+                                       {"$set": {"session_id": sid, "idx": body.idx, "data": body.data}}, upsert=True)
+    await db.sessions.update_one({"id": sid}, {"$inc": {"size": len(body.data)}})
+    return {"ok": True}
+
+
+@api_router.get("/sessions", response_model=List[SessionMeta])
+async def list_sessions(scene: Optional[str] = None):
+    q = {"scene": scene} if scene else {}
+    return await db.sessions.find(q, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@api_router.get("/sessions/{sid}/jsonl")
+async def session_jsonl(sid: str):
+    if not await db.sessions.find_one({"id": sid}, {"_id": 0, "id": 1}):
+        raise HTTPException(status_code=404, detail="Session not found")
+    chunks = await db.session_chunks.find({"session_id": sid}, {"_id": 0, "data": 1}).sort("idx", 1).to_list(10000)
+    return PlainTextResponse("\n".join(c["data"] for c in chunks), media_type="application/x-ndjson")
+
+
+@api_router.delete("/sessions/{sid}")
+async def delete_session(sid: str):
+    res = await db.sessions.delete_one({"id": sid})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.session_chunks.delete_many({"session_id": sid})
+    return {"ok": True}
 
 
 app.include_router(api_router)

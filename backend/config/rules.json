@@ -1,0 +1,49 @@
+{
+  "version_note": "G-14 rules: throttle tiers, cognitive load weights, lure pull/resist, threat weights. Saved edits hot-reload in the app.",
+  "telemetry": {
+    "timeout_ms": 500,
+    "min_quality": 0.5
+  },
+  "throttle": {
+    "observer_tiers": [
+      { "tier": 0, "name": "CALM", "min_load": 0 },
+      { "tier": 1, "name": "ALERT", "min_load": 40 },
+      { "tier": 2, "name": "HIGH", "min_load": 70 },
+      { "tier": 3, "name": "CRITICAL", "min_load": 90 }
+    ],
+    "visor_tiers": [
+      { "tier": 0, "name": "NOMINAL", "min_load": 0 },
+      { "tier": 1, "name": "THROTTLED", "min_load": 60 },
+      { "tier": 2, "name": "OVERLOAD", "min_load": 80 }
+    ],
+    "calm_assist_bpm": 110
+  },
+  "cog_load": {
+    "visor": { "beta": 0.5, "threat": 0.25, "per_entity": 0.04, "instability": 0.25, "lure": 0.12 },
+    "corridor": {
+      "base": 0.12, "max_threat": 0.45, "per_close_contact": 0.05, "close_range_m": 40,
+      "filter_off": 0.3, "low_composure": 0.15, "speed_per_mps": 0.055, "overrun": 0.1, "lure": 0.12,
+      "stance": { "stand": 0, "crouch": -0.04, "prone": -0.07 }
+    }
+  },
+  "lure": {
+    "composure_weight": 0.45,
+    "calm_weight": 0.3,
+    "steady_key_weight": 0.4,
+    "calm_beta_gain": 1.5,
+    "resist_scale": 0.9,
+    "offset_gain": 0.7,
+    "show_threshold": 0.12,
+    "visor": { "range_m": 160, "gain": 1.1 },
+    "corridor": { "range_m": 70, "gain": 1.5 }
+  },
+  "threat": {
+    "visor_class_bias": { "AHRIMANIC": 0.08, "LUCIFERIC": -0.2, "UNKNOWN": -0.1 },
+    "corridor_base": { "pygmy": 0.45, "wraith": 0.6, "golem": 0.85, "gnome": 0.15, "boss": 0.5 },
+    "gnome_mood": { "NEUTRAL": 0.15, "SUBMITTED": 0.03, "HOSTILE": 0.75 },
+    "counter_multiplier": { "golem": 0.4, "wraith": 0.35 },
+    "pygmy_composure_factor": 1.4,
+    "non_hostile_weight": 0.3,
+    "approach_bonus_mps": 4
+  }
+}

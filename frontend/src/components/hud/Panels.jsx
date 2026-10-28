@@ -1,3 +1,4 @@
+import { U, SimTag } from "@/components/telemetry/Units";
 import { Crosshair, Target, Shield, Box } from "lucide-react";
 import { threatLabel, LOADOUT } from "@/lib/sim";
 
@@ -98,7 +99,7 @@ export const StatusRail = ({ frame, throttling }) => {
       <div className="load">
         <div className="micro">COG LOAD</div>
         <div className="load-bar"><i style={{ height: `${cognitive_load * 100}%` }} className={`tier-${throttle_tier}`} /></div>
-        <b data-testid="cognitive-load-value">{Math.round(cognitive_load * 100)}</b>
+        <b data-testid="cognitive-load-value">{Math.round(cognitive_load * 100)}<U>%</U></b><SimTag frame={frame} ch="cog_load" />
       </div>
       {active && (
         <div className={`throttle-flag tier-${throttle_tier}`} data-testid="observer-throttle-indicator">

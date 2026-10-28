@@ -3,8 +3,11 @@ import { LureWrap, LureCue } from "@/components/hud/LureCue";
 import { useResistKey } from "@/hooks/useResistKey";
 import { useBodyAudio } from "@/hooks/useBodyAudio";
 import { EventLog } from "@/components/corridor/CorridorProgress";
-import { DEFAULT_CONTROLS, DEFAULT_VIEW, layerOpacity, makeVisorSim } from "@/lib/sim";
-import { useSimulation } from "@/hooks/useSimulation";
+import { DEFAULT_CONTROLS, DEFAULT_VIEW, layerOpacity, makeVisorSim, composeVisor } from "@/lib/sim";
+import { useTelemetryEngine } from "@/hooks/useTelemetryEngine";
+import { useRules } from "@/lib/rules";
+import { TapeDeck } from "@/components/telemetry/TapeDeck";
+import { BootScreen } from "@/components/telemetry/BootScreen";
 import { WorldBackground, VisorFrame } from "@/components/hud/VisorFrame";
 import { EntityLayer } from "@/components/hud/EntityLayer";
 import { LissajousReticle } from "@/components/hud/LissajousReticle";
@@ -37,13 +40,19 @@ function useStageLog(frame) {
 }
 
 export default function VisorPage() {
+  const { rules } = useRules();
+  return rules ? <Visor rules={rules} /> : <BootScreen />;
+}
+
+function Visor({ rules }) {
   const [controls, setControls] = useState(DEFAULT_CONTROLS);
   const [view, setView] = useState(DEFAULT_VIEW);
   const [activePreset, setActivePreset] = useState("calm");
   const [panel, setPanel] = useState(null);
   const [streaming, setStreaming] = useState(false);
-  const builder = useMemo(makeVisorSim, []);
-  const { frame, frameRef, streamStatus } = useSimulation(controls, streaming, builder);
+  const sim = useMemo(makeVisorSim, []);
+  const engine = useTelemetryEngine({ scene: "city", sim, compose: composeVisor, controls, setControls, rules, streaming });
+  const { frame, frameRef, streamStatus } = engine;
   useResistKey(setControls);
   useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
   const events = useStageLog(frame);
@@ -56,7 +65,7 @@ export default function VisorPage() {
   const closePanel = useCallback(() => setPanel(null), []);
 
   return (
-    <div className={`visor-root tier-${tier}`} data-testid="visor-page">
+    <div className={`visor-root tier-${tier} ${frame.replay ? "is-replay" : ""}`} data-testid="visor-page">
       <WorldBackground frameRef={frameRef} />
       {L.entities && <EntityLayer frame={frame} tier={tier} />}
       <div className="hud-layer" style={sway} data-testid="hud-layer">
@@ -73,17 +82,18 @@ export default function VisorPage() {
         </div>
         <div className="hud-slot slot-rail curve-right"><StatusRail frame={frame} throttling={view.throttling} /></div>
         <div className="sys-line" data-testid="hud-system-line">
-          G-14 // RIG v3.7 · SEQ {String(frame.seq).padStart(5, "0")} · LINK {streamStatus === "live" ? "STREAMING" : "LOCAL SIM"}
+          G-14 // RIG v3.7 · SEQ {String(frame.seq).padStart(5, "0")} · LINK {streamStatus === "live" ? "STREAMING" : "LOCAL"} {Math.round(frame.link.status * 100)}<small className="u-label">%</small>
         </div>
       </div>
       <LureCue frame={frame} tier={tier} />
       <VisorFrame overload={tier === 2} scanlines={view.scanlines} />
+      <TapeDeck engine={engine} scene="city" />
       <TopBar onSensors={() => setPanel(panel === "sensors" ? null : "sensors")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} />
       <div className="visor-hint">
-        PRESET <b data-testid="active-preset-label">{activePreset ? activePreset.toUpperCase() : "CUSTOM"}</b> · HOLD SPACE TO STEADY · ALL SENSOR DATA SIMULATED
+        PRESET <b data-testid="active-preset-label">{activePreset ? activePreset.toUpperCase() : "CUSTOM"}</b> · HOLD SPACE TO STEADY · {frame.replay ? "REPLAYING RECORDED SESSION" : "TELEMETRY BUS · SIM SOURCES"}
       </div>
       <SensorPanel open={panel === "sensors"} onClose={closePanel} controls={controls} setControls={setControls}
-        view={view} setView={setView} activePreset={activePreset} setActivePreset={setActivePreset} />
+        view={view} setView={setView} activePreset={activePreset} setActivePreset={setActivePreset} telemetry={frame.telemetry} />
       <DataFeed open={panel === "feed"} onClose={closePanel} frame={frame} streaming={streaming} setStreaming={setStreaming} streamStatus={streamStatus} />
     </div>
   );

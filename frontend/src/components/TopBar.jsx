@@ -20,6 +20,7 @@ export const TopBar = ({ onSensors, onFeed, streamStatus, sensorsLabel = "SENSOR
         <Link to="/" className={pathname === "/" ? "active" : ""} data-testid="nav-visor-link">VISOR</Link>
         <Link to="/hallway" className={pathname === "/hallway" ? "active" : ""} data-testid="nav-hallway-link">HALLWAY</Link>
         <Link to="/baseline" className={pathname === "/baseline" ? "active" : ""} data-testid="nav-baseline-link">BASELINE</Link>
+        <Link to="/rules" className={pathname === "/rules" ? "active" : ""} data-testid="nav-rules-link">RULES</Link>
         <Link to="/unreal" className={pathname === "/unreal" ? "active" : ""} data-testid="nav-unreal-link">UNREAL KIT</Link>
       </nav>
       {onSensors && (

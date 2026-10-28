@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
-import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT, RUN } from "@/lib/corridor";
+import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, composeCorridor, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT, RUN } from "@/lib/corridor";
+import { useRules } from "@/lib/rules";
+import { TapeDeck } from "@/components/telemetry/TapeDeck";
+import { BootScreen } from "@/components/telemetry/BootScreen";
 import { RunVectors, RunChip } from "@/components/corridor/RunVectors";
 import { LureWrap, LureCue } from "@/components/hud/LureCue";
 import { useResistKey } from "@/hooks/useResistKey";
 import { useBodyAudio } from "@/hooks/useBodyAudio";
 import { GhostVectors, Periphery, BreathPacer, VitalsChip, useSpatialCue, AlertPips, TelemetryEdge, GazeDot, reveal } from "@/components/corridor/GhostHud";
 import { ThrottleHud } from "@/components/corridor/ThrottleHud";
-import { useSimulation } from "@/hooks/useSimulation";
+import { useTelemetryEngine } from "@/hooks/useTelemetryEngine";
 import { VisorFrame } from "@/components/hud/VisorFrame";
 import { CorridorBackground, CorridorEntityLayer } from "@/components/corridor/CorridorScene";
 import { CorridorProgress, EventLog } from "@/components/corridor/CorridorProgress";
@@ -88,12 +91,18 @@ function useEventLog(frame, interval, resetKey) {
 }
 
 export default function HallwayPage() {
+  const { rules } = useRules();
+  return rules ? <Hallway rules={rules} /> : <BootScreen />;
+}
+
+function Hallway({ rules }) {
   const [controls, setControls] = useState(DEFAULT_CORRIDOR);
   const [panel, setPanel] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [streaming, setStreaming] = useState(false);
-  const builder = useMemo(makeCorridorSim, []);
-  const { frame, frameRef, streamStatus } = useSimulation(controls, streaming, builder);
+  const sim = useMemo(makeCorridorSim, []);
+  const engine = useTelemetryEngine({ scene: "hallway", sim, compose: composeCorridor, controls, setControls, rules, streaming });
+  const { frame, frameRef, streamStatus } = engine;
   const events = useEventLog(frame, controls.interval, controls.resetKey);
   const view = DEFAULT_VIEW;
 
@@ -123,7 +132,7 @@ export default function HallwayPage() {
   const lagX = (lag.yaw - yaw_deg) * 9;
   const lagY = (pitch_deg - lag.pitch) * 9;
   const sway = { transform: `translate(${roll_deg * 0.8 + lagX}px, ${pitch_deg * 1.2 + lagY}px) rotate(${roll_deg * 0.08}deg)` };
-  const zone = ZONES[controls.zone];
+  const zone = ZONES[frame.zone];
   const ghost = controls.mode === "ghost";
   const throttle = controls.mode === "throttle";
   const baseline = useMemo(() => JSON.parse(localStorage.getItem("g14.baseline") || "null"), []);
@@ -150,7 +159,7 @@ export default function HallwayPage() {
   useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
 
   return (
-    <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
+    <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level} ${frame.replay ? "is-replay" : ""}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
       <CorridorBackground frameRef={frameRef} zone={zone} />
       {ghost && <GhostVectors frame={frame} />}
       <RunVectors frame={frame} />
@@ -195,12 +204,13 @@ export default function HallwayPage() {
       </div>
       <LureCue frame={frame} tier={throttle ? frame.hud.obs_tier : tier} />
       <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />
+      <TapeDeck engine={engine} scene="hallway" />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">
-        ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {controls.run !== "off" ? <b data-testid="run-mode-label">VECTOR RUN {controls.run.toUpperCase()}{controls.run === "manual" ? " · W WALK · SHIFT SPRINT · C CROUCH · X PRONE" : ""}</b> : playing ? "AUTO-ADVANCING" : "MANUAL"} · ALL ENTITY DATA SIMULATED
+        ASYLUM CORRIDOR · STEP <b data-testid="corridor-interval-label">{controls.interval} m</b> · {controls.run !== "off" ? <b data-testid="run-mode-label">VECTOR RUN {controls.run.toUpperCase()}{controls.run === "manual" ? " · W WALK · SHIFT SPRINT · C CROUCH · X PRONE" : ""}</b> : playing ? "AUTO-ADVANCING" : "MANUAL"} · {frame.replay ? "REPLAYING RECORDED SESSION" : "TELEMETRY BUS · SIM SOURCES"}
       </div>
       <HallwayPanel open={panel === "controls"} onClose={closePanel} controls={controls} setControls={setControls}
-        playing={playing} setPlaying={setPlaying} onReset={onReset} onZone={onZone} onRun={onRun} />
+        playing={playing} setPlaying={setPlaying} onReset={onReset} onZone={onZone} onRun={onRun} telemetry={frame.telemetry} />
       <DataFeed open={panel === "feed"} onClose={closePanel} frame={frame} streaming={streaming} setStreaming={setStreaming} streamStatus={streamStatus} />
     </div>
   );

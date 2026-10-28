@@ -553,3 +553,57 @@
 .lure-chip b { font-weight: 400; color: #f0d79a; text-shadow: 0 0 8px rgba(240, 215, 154, 0.7); }
 .lure-hint { color: rgba(207, 239, 255, 0.55); }
 .lure-chip.resisting .lure-hint { color: var(--cyan); animation: boot-fade 300ms ease both; }
+
+/* telemetry bus · units · record / replay */
+.u-label { font-size: 0.55em; letter-spacing: 0.12em; opacity: 0.6; margin-left: 2px; font-weight: 400; text-transform: none; }
+.sim-tag { display: inline-block; margin-left: 4px; padding: 0 3px; font-size: 7px; letter-spacing: 0.14em; line-height: 11px; color: #ffaa00; border: 1px solid rgba(255, 170, 0, 0.6); vertical-align: middle; font-weight: 400; }
+.vc-ring-label { position: absolute; top: 100%; left: 0; margin-top: 3px; font-size: 8px; letter-spacing: 0.14em; color: rgba(207, 239, 255, 0.6); white-space: nowrap; }
+.vitals-chip { position: relative; }
+.drawer-tabs { margin-bottom: 14px; }
+.tel-panel { display: flex; flex-direction: column; gap: 8px; }
+.tel-row { border: 1px solid rgba(0, 240, 255, 0.14); padding: 7px 8px; background: rgba(0, 240, 255, 0.03); display: flex; flex-direction: column; gap: 5px; transition: border-color 300ms ease; }
+.tel-row.is-fallback { border-color: rgba(255, 170, 0, 0.5); }
+.tel-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; letter-spacing: 0.12em; }
+.tel-name em { font-style: normal; margin-left: 6px; opacity: 0.45; font-size: 8px; }
+.tel-head b { font-family: "Rajdhani", sans-serif; font-size: 15px; color: #fff; }
+.tel-mid { display: grid; grid-template-columns: auto auto 1fr 70px; gap: 6px; align-items: center; }
+.tel-src { display: flex; }
+.tel-src button { font-size: 8px; letter-spacing: 0.1em; padding: 2px 5px; border: 1px solid rgba(0, 240, 255, 0.25); color: rgba(207, 239, 255, 0.6); background: transparent; cursor: pointer; transition: background-color 200ms ease, color 200ms ease; }
+.tel-src button + button { border-left: none; }
+.tel-src button.on { background: rgba(0, 240, 255, 0.18); color: #fff; }
+.tel-live { font-size: 8px; letter-spacing: 0.12em; color: var(--cyan); white-space: nowrap; }
+.is-fallback .tel-live { color: #ffaa00; }
+.tel-q { height: 3px; background: rgba(0, 240, 255, 0.12); }
+.tel-q i { display: block; height: 100%; background: var(--cyan); transition: width 300ms ease; }
+.tel-spark { width: 70px; height: 18px; }
+.tel-spark polyline { fill: none; stroke: var(--cyan); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.tel-ov { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+.tape-deck { position: absolute; left: 22px; bottom: 16px; z-index: 40; display: flex; gap: 8px; align-items: center; }
+.hud-btn.rec svg { color: var(--red); fill: var(--red); }
+.hud-btn.rec-on { border-color: var(--red); color: #fff; background: rgba(255, 42, 75, 0.2); animation: alert-flash 1.2s steps(2) infinite; }
+.deck-transport { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(4, 8, 14, 0.8); border: 1px solid rgba(255, 42, 75, 0.4); backdrop-filter: blur(14px); }
+.deck-scrub { position: relative; width: 320px; }
+.deck-scrub input { width: 100%; accent-color: var(--red); }
+.deck-mark { position: absolute; top: -3px; width: 2px; height: 6px; background: var(--cyan); pointer-events: none; }
+.deck-mark.ev-lure_start { background: #f0d79a; }
+.deck-mark.ev-resist_result { background: #00ff9d; }
+.deck-mark.ev-throttle_tier { background: var(--red); }
+.deck-time { font-size: 10px; letter-spacing: 0.1em; color: #fff; min-width: 92px; }
+.deck-speed { font-size: 9px; padding: 3px 6px; border: 1px solid rgba(0, 240, 255, 0.25); color: rgba(207, 239, 255, 0.7); background: transparent; cursor: pointer; }
+.deck-speed.on { background: rgba(0, 240, 255, 0.2); color: #fff; }
+.replay-badge, .rec-badge { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 41; padding: 3px 12px; font-size: 10px; letter-spacing: 0.3em; color: #fff; background: rgba(255, 42, 75, 0.25); border: 1px solid var(--red); box-shadow: 0 0 14px rgba(255, 42, 75, 0.5); pointer-events: none; }
+.replay-badge span { opacity: 0.7; letter-spacing: 0.12em; margin: 0 6px; }
+.rec-badge { left: auto; right: 9%; transform: none; animation: alert-flash 1.2s steps(2) infinite; }
+.g14-dialog { background: #060b12 !important; border: 1px solid rgba(0, 240, 255, 0.3) !important; color: #cfefff; font-family: "JetBrains Mono", monospace; }
+.g14-dialog.wide { max-width: 720px; }
+.g14-field { display: flex; flex-direction: column; gap: 4px; font-size: 10px; letter-spacing: 0.18em; }
+.sess-actions { display: flex; gap: 8px; }
+.sess-list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
+.sess-item { display: flex; gap: 8px; align-items: center; padding: 8px; border: 1px solid rgba(0, 240, 255, 0.15); }
+.sess-main { flex: 1; min-width: 0; font-size: 11px; }
+.sess-scene { margin-left: 8px; font-size: 8px; letter-spacing: 0.2em; color: var(--cyan); }
+.sess-notes { font-size: 10px; opacity: 0.6; margin-top: 2px; }
+.rules-editor { width: 100%; min-height: 62vh; background: #03070c; color: #cfefff; border: 1px solid rgba(0, 240, 255, 0.2); font-family: "JetBrains Mono", monospace; font-size: 12px; line-height: 1.5; padding: 14px; resize: vertical; outline: none; }
+.rules-status { font-size: 10px; letter-spacing: 0.14em; color: #00ff9d; display: inline-flex; align-items: center; gap: 6px; }
+.rules-status.bad { color: var(--red); }
+.boot-screen { position: fixed; inset: 0; display: grid; place-items: center; background: #03070c; color: var(--cyan); font-size: 11px; letter-spacing: 0.3em; }

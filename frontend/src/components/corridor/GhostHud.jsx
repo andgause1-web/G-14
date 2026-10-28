@@ -1,3 +1,4 @@
+import { U, SimTag } from "@/components/telemetry/Units";
 import { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import { FOV_H, FOV_V, clamp } from "@/lib/sim";
@@ -134,10 +135,11 @@ export const reveal = (gaze, side) => 0.04 + 0.96 * clamp((side * gaze / 100 - 0
 export const TelemetryEdge = ({ frame }) => (
   <div className="telemetry-edge" data-testid="telemetry-edge">
     <div className="te-row"><span>LEAD</span><b>{Math.round(frame.lead_m)} m</b></div>
-    <div className="te-row"><span>SpO₂</span><b>{frame.bio.spo2}%</b></div>
-    <div className="te-row"><span>STASIS</span><b>{Math.round(frame.eeg.stasis_index * 100)}</b></div>
-    <div className="te-row"><span>COG LOAD</span><b>{Math.round(frame.hud.cognitive_load * 100)}</b></div>
-    <div className="te-row"><span>FOCUS</span><b>{frame.hud.focus_ids.length}</b></div>
+    <div className="te-row"><span>SpO₂</span><b>{frame.bio.spo2}<U>%</U><SimTag frame={frame} ch="spo2" /></b></div>
+    <div className="te-row"><span>STASIS</span><b>{Math.round(frame.eeg.stasis_index * 100)}<U>%</U><SimTag frame={frame} ch="stasis" /></b></div>
+    <div className="te-row"><span>COG LOAD</span><b>{Math.round(frame.hud.cognitive_load * 100)}<U>%</U><SimTag frame={frame} ch="cog_load" /></b></div>
+    <div className="te-row"><span>EM · TEMP</span><b>{frame.env.em_ut}<U>µT</U> {frame.env.thermal_c.toFixed(1)}<U>°C</U><SimTag frame={frame} ch={["em_field", "temp"]} /></b></div>
+    <div className="te-row"><span>FOCUS</span><b>{frame.hud.focus_ids.length}<U>TGT</U></b></div>
   </div>
 );
 
@@ -163,8 +165,9 @@ export const VitalsChip = ({ frame }) => {
       </svg>
       <div className="vc-hr">
         <Heart size={13} className="vc-heart" style={{ animationDuration: `${60 / heart_rate_bpm}s` }} />
-        <b data-testid="heart-rate-value">{heart_rate_bpm}</b>
+        <b data-testid="heart-rate-value">{heart_rate_bpm}</b><U>BPM</U><SimTag frame={frame} ch="hr_bpm" />
       </div>
+      <span className="vc-ring-label" data-testid="vitals-stasis-label">STASIS {Math.round(stasis_index * 100)}<U>%</U></span>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { clamp, eegFrom, headMotion, luciferLure } from "@/lib/sim";
+import { clamp, eegFrom, headMotion, luciferLure, eegChannels, imuChannels, eegFromTel, imuFromTel, bioFromTel, envFromTel, simClock, tierOfLoad } from "@/lib/sim";
 
 const r = (v, p = 2) => Math.round(v * 10 ** p) / 10 ** p;
 const IMG = "https://static.prod-images.emergentagent.com/jobs/e985c244-e4a3-4446-beff-f722650fda53/images/";
@@ -92,12 +92,10 @@ export const ZONES = {
 };
 
 export const FOCUS_LIMIT = 3;
-export const CALM_HR = 110;
 
 export const STAGES = ["DETECTED", "CLASSIFYING", "IDENTIFIED", "TRACKING", "PROXIMITY"];
 export const stageOf = (d) => (d > 80 ? "DETECTED" : d > 60 ? "CLASSIFYING" : d > 40 ? "IDENTIFIED" : d > 20 ? "TRACKING" : "PROXIMITY");
 
-const GNOME_THREAT = { NEUTRAL: 0.15, SUBMITTED: 0.03, HOSTILE: 0.75 };
 
 export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
@@ -109,27 +107,27 @@ export const DEFAULT_CORRIDOR = {
 export const stepCloser = (c) => ({ ...c, distance: Math.max(0, Math.ceil(c.distance / c.interval) * c.interval - c.interval) });
 export const stepBack = (c) => ({ ...c, distance: Math.min(100, Math.floor(c.distance / c.interval) * c.interval + c.interval) });
 
-function buildEntity(e, c, lead, t, eye = 1.6) {
+function buildEntity(e, c, lead, t, eye, TH) {
   const T = ENTITY_TYPES[e.type];
   const jitter = e.type === "pygmy" ? Math.sin(t * 2.3 + e.offset * 3) * 0.35 : e.type === "wraith" ? Math.sin(t * 0.4) * 0.15 : 0;
   const d0 = e.fixed ?? clamp(lead + e.offset, 3, 95);
   const d = e.fixed ?? clamp(d0 + (e.type === "pygmy" ? Math.sin(t * 1.7 + e.offset) * 0.8 : 0), 3, 95);
   const lane = e.lane + jitter;
   const prox = 1 - d / CORRIDOR_LENGTH;
-  let threat = T.base * (0.4 + 0.6 * prox);
+  let threat = TH.corridor_base[e.type] * (0.4 + 0.6 * prox);
   let disposition = "HOSTILE";
   let countered = false;
-  if (e.type === "pygmy") threat *= 1.4 - c.composure / 100;
+  if (e.type === "pygmy") threat *= TH.pygmy_composure_factor - c.composure / 100;
   if (e.type === "gnome") {
     disposition = c.gnomeMood;
-    threat = GNOME_THREAT[c.gnomeMood] * (0.5 + 0.5 * prox);
+    threat = TH.gnome_mood[c.gnomeMood] * (0.5 + 0.5 * prox);
   }
   if (e.type === "boss") {
     disposition = "DORMANT";
-    threat = T.base;
+    threat = TH.corridor_base.boss;
   }
   if ((e.type === "golem" && c.tone) || (e.type === "wraith" && c.thermal)) {
-    threat *= e.type === "golem" ? 0.4 : 0.35;
+    threat *= TH.counter_multiplier[e.type];
     countered = true;
   }
   return {
@@ -174,9 +172,9 @@ function autoRun(lead, nearest) {
   return { target: 1.2, stance: lead < 10 ? "stand" : "crouch" };
 }
 
-export const obsTierOf = (load) => (load >= 0.9 ? 3 : load >= 0.7 ? 2 : load >= 0.4 ? 1 : 0);
 
 export function makeCorridorSim() {
+  const clock = simClock();
   let lead = DEFAULT_CORRIDOR.distance;
   let last = null;
   let observe = 0;
@@ -191,123 +189,164 @@ export function makeCorridorSim() {
   let step = 0;
   let lastStepIdx = 0;
   let prevStress = 0;
+  let state = {};
   const prevD = {};
-  return (c, t, seq) => {
-    const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
-    last = t;
-    if (c.resetKey !== resetKey) {
-      resetKey = c.resetKey;
-      lead = c.distance;
-      observe = 0;
-      speed = 0;
-      travelled = 0;
-    }
-    const running = c.run && c.run !== "off";
-    if (running && !wasRunning) lead = c.distance;
-    wasRunning = running;
-    const auto = c.run === "auto" ? autoRun(lead, prevNearest) : null;
-    const stance = auto ? auto.stance : c.stance;
-    let target = !running ? 0 : auto ? auto.target : c.keyRun ?? c.speed / 10;
-    if (stance === "crouch") target = Math.min(target, 2);
-    if (stance === "prone") target = Math.min(target, 0.6);
-    if (lead <= 0) target = 0;
-    speed = clamp(speed + clamp(target - speed, -RUN.decel * dt, RUN.accel * dt), 0, 9);
-    if (running) {
-      const step = Math.min(lead, speed * dt);
-      lead -= step;
-      travelled += step;
-      if (lead <= 0) speed = 0;
-    } else {
-      speed = 0;
-      lead += (c.distance - lead) * Math.min(1, dt * 1.6);
-      if (Math.abs(c.distance - lead) < 0.3) lead = c.distance;
-    }
-    const eyeT = eyeOf(stance, c.bodyHeight ?? 178);
-    eye = eye == null ? eyeT : eye + (eyeT - eye) * Math.min(1, dt * 5);
-    phase += dt * Math.PI * (1.6 + speed * 0.22);
-    const stepIdx = Math.floor(phase / Math.PI);
-    if (stepIdx !== lastStepIdx && speed > 0.15) step += 1;
-    lastStepIdx = stepIdx;
-    const breathHz = c.resist ? 0.1 : 0.22 + speed * 0.06 + prevStress * 0.12;
-    breath += dt * 2 * Math.PI * breathHz;
-    const imu = {
-      ...headMotion(c, t, { phase, amp: speed > 0.15 ? 0.12 + speed * 0.12 : 0, breathPhase: breath }),
-      head_height_m: r(eye, 2),
-    };
-    const zone = ZONES[c.zone];
-    const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t, eye));
-    // contact priority: threat weight x (1 / distance) x approach-speed bonus
-    entities.forEach((e) => {
-      const p = prevD[e.id];
-      const v = dt > 0 && p != null ? (p - e.distance_m) / dt : 0;
-      prevD[e.id] = e.distance_m;
-      e.approach_mps = r(Math.max(0, v), 1);
-      const w = e.disposition === "HOSTILE" ? e.threat : e.threat * 0.3;
-      e.score = r((w * 100 * (1 + clamp(v / 4))) / Math.max(1, e.distance_m), 3);
-    });
-    const hostile = entities.filter((e) => e.disposition === "HOSTILE");
-    const nearest = hostile.reduce((m, e) => Math.min(m, e.distance_m), CORRIDOR_LENGTH);
-    const maxThreat = hostile.reduce((m, e) => Math.max(m, e.threat), 0);
-    const close = hostile.filter((e) => e.distance_m <= 40).length;
-    const comp = c.composure / 100;
-    const proxN = 1 - nearest / CORRIDOR_LENGTH;
-    prevNearest = nearest;
-    const brake = brakeDistance(speed);
-    const overrun = running && speed > 0.3 && hostile.some((e) => e.distance_m <= brake + 2);
+  const restore = (s) => {
+    ({ lead, observe, resetKey, speed, eye, phase, travelled, prevNearest, wasRunning, breath, step, lastStepIdx, prevStress } = s);
+    last = s.t;
+    Object.keys(prevD).forEach((k) => delete prevD[k]);
+  };
+  return {
+    getState: () => state,
+    setState: (s) => clock.set(s),
+    step(c, t0, rules) {
+      const t = clock.tick(t0, restore);
+      const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
+      last = t;
+      if (c.resetKey !== resetKey) {
+        resetKey = c.resetKey;
+        lead = c.distance;
+        observe = 0;
+        speed = 0;
+        travelled = 0;
+      }
+      const running = c.run && c.run !== "off";
+      if (running && !wasRunning) lead = c.distance;
+      wasRunning = running;
+      const auto = c.run === "auto" ? autoRun(lead, prevNearest) : null;
+      const stance = auto ? auto.stance : c.stance;
+      let target = !running ? 0 : auto ? auto.target : c.keyRun ?? c.speed / 10;
+      if (stance === "crouch") target = Math.min(target, 2);
+      if (stance === "prone") target = Math.min(target, 0.6);
+      if (lead <= 0) target = 0;
+      speed = clamp(speed + clamp(target - speed, -RUN.decel * dt, RUN.accel * dt), 0, 9);
+      if (running) {
+        const d = Math.min(lead, speed * dt);
+        lead -= d;
+        travelled += d;
+        if (lead <= 0) speed = 0;
+      } else {
+        speed = 0;
+        lead += (c.distance - lead) * Math.min(1, dt * 1.6);
+        if (Math.abs(c.distance - lead) < 0.3) lead = c.distance;
+      }
+      const eyeT = eyeOf(stance, c.bodyHeight ?? 178);
+      eye = eye == null ? eyeT : eye + (eyeT - eye) * Math.min(1, dt * 5);
+      phase += dt * Math.PI * (1.6 + speed * 0.22);
+      const stepIdx = Math.floor(phase / Math.PI);
+      if (stepIdx !== lastStepIdx && speed > 0.15) step += 1;
+      lastStepIdx = stepIdx;
+      const breathHz = c.resist ? 0.1 : 0.22 + speed * 0.06 + prevStress * 0.12;
+      breath += dt * 2 * Math.PI * breathHz;
+      const imu = headMotion(c, t, { phase, amp: speed > 0.15 ? 0.12 + speed * 0.12 : 0, breathPhase: breath });
+      const TH = rules.threat;
+      const zone = ZONES[c.zone];
+      const entities = [...zone.roster, BOSS].filter((e) => c.show[e.type]).map((e) => buildEntity(e, c, lead, t, eye, TH));
+      // contact priority: threat weight x (1 / distance) x approach-speed bonus
+      entities.forEach((e) => {
+        const p = prevD[e.id];
+        const v = dt > 0 && p != null ? (p - e.distance_m) / dt : 0;
+        prevD[e.id] = e.distance_m;
+        e.approach_mps = r(Math.max(0, v), 1);
+        const w = e.disposition === "HOSTILE" ? e.threat : e.threat * TH.non_hostile_weight;
+        e.score = r((w * 100 * (1 + clamp(v / TH.approach_bonus_mps))) / Math.max(1, e.distance_m), 3);
+      });
+      const hostile = entities.filter((e) => e.disposition === "HOSTILE");
+      const nearest = hostile.reduce((m, e) => Math.min(m, e.distance_m), CORRIDOR_LENGTH);
+      prevNearest = nearest;
+      const comp = c.composure / 100;
+      const proxN = 1 - nearest / CORRIDOR_LENGTH;
+      const brake = brakeDistance(speed);
+      const overrun = running && speed > 0.3 && hostile.some((e) => e.distance_m <= brake + 2);
+      const stress = clamp(proxN * 0.85 * (1.3 - comp) + (c.filter ? 0 : 0.35) + speed * 0.03);
+      prevStress = stress;
+      const eeg = eegFrom({ alpha: 60 - 45 * stress, beta: 20 + 65 * stress, theta: 28 - 18 * stress, delta: 12 - 7 * stress, gamma: 8 + 60 * stress }, t);
+      if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 1.5);
+      const env = envReadings(entities, t);
+      state = { t, lead, observe, resetKey, speed, eye, phase, travelled, prevNearest, wasRunning, breath, step, lastStepIdx, prevStress };
+      return {
+        sim: {
+          ...eegChannels(eeg), ...imuChannels(imu),
+          hr_bpm: 64 + stress * 75 + speed * 6 + Math.sin(t * 1.9) * 1.5,
+          spo2: 98 - stress * 3,
+          temp: env.thermal_c, em_field: env.em_ut, imu_jitter: env.imu_jitter_deg,
+          link_status: 1,
+        },
+        world: {
+          scene: "hallway", zone: c.zone, lead_m: r(lead, 1), eye: r(eye, 2), entities, observe: r(observe / 100, 3),
+          run: { mode: c.run || "off", speed_mps: r(speed, 2), eye_m: r(eye, 2), stance, brake_m: r(brake, 1), travelled_m: r(travelled, 1), overrun, step },
+          ctl: { composure: c.composure, resist: !!c.resist, filter: c.filter, loadManual: c.loadManual, load: c.load },
+          breath: { hz: breathHz, phase: breath },
+        },
+      };
+    },
+  };
+}
 
-    const stress = clamp(proxN * 0.85 * (1.3 - comp) + (c.filter ? 0 : 0.35) + speed * 0.03);
-    prevStress = stress;
-    const eeg = eegFrom({ alpha: 60 - 45 * stress, beta: 20 + 65 * stress, theta: 28 - 18 * stress, delta: 12 - 7 * stress, gamma: 8 + 60 * stress }, t);
-    const lure = luciferLure(entities, imu, { composure: c.composure, resisting: c.resist, bands: eeg.bands, range: 70, gain: 1.5 });
-    const autoLoad = clamp(0.12 * lure.pull + 0.12 + 0.45 * maxThreat + 0.05 * close + (c.filter ? 0 : 0.3) + (1 - comp) * 0.15 + speed * 0.055 + (overrun ? 0.1 : 0) - (stance === "crouch" ? 0.04 : stance === "prone" ? 0.07 : 0));
-    const load = c.loadManual ? c.load / 100 : autoLoad;
-    const stability = clamp((c.filter ? 0.92 : 0.35) - 0.55 * proxN * (1.2 - comp));
-
-    if (c.show.boss && c.filter && Math.abs(imu.yaw_deg) < 12) observe = Math.min(100, observe + dt * 1.5);
-
-    const hr = 64 + stress * 75 + speed * 6 + Math.sin(t * 1.9) * 1.5;
-    const ghost = c.mode === "ghost";
-    const calm = ghost && hr >= CALM_HR;
-    // Dead Core limit: only the top-N hostiles by threat x proximity get full attention
-    const focus = hostile
-      .filter((e) => e.stage !== "DETECTED")
-      .sort((a, b) => b.threat * (1.2 - b.distance_m / 100) - a.threat * (1.2 - a.distance_m / 100))
-      .slice(0, calm ? 2 : FOCUS_LIMIT)
-      .map((e) => e.id);
-    const focusD = hostile.filter((e) => focus.includes(e.id)).map((e) => e.distance_m);
-    const nearestFocus = focusD.length ? Math.min(...focusD) : null;
-    // calm by default: quiet -> peripheral -> audio -> full overlay
-    const alert = !ghost ? 3 : nearestFocus == null ? 0 : nearestFocus > 40 ? 1 : nearestFocus > 20 ? 2 : 3;
-
-    return {
-      schema: "g14.hud.v1",
-      seq,
-      t_ms: Date.now(),
-      source: "SIMULATOR",
-      scene: "asylum_corridor",
-      zone: c.zone,
-      lead_m: r(lead, 1),
-      eeg,
-      imu,
-      bio: { sensor: "MAX30102", heart_rate_bpm: Math.round(hr), spo2: Math.round(98 - stress * 3), breath_hz: r(breathHz, 3), breath_phase: r(breath % (2 * Math.PI), 3) },
-      env: envReadings(entities, t),
-      run: { mode: c.run || "off", speed_mps: r(speed, 2), eye_m: r(eye, 2), stance, brake_m: r(brake, 1), travelled_m: r(travelled, 1), overrun, step },
-      scan: { sensor: "TSL1401CL", resonance: r(clamp(0.25 + 0.65 * proxN)), stability: r(stability), entities },
-      hud: {
-        cognitive_load: r(load),
-        throttle_tier: load >= 0.8 ? 2 : load >= 0.6 ? 1 : 0,
-        target_lock: c.filter && hostile.some((e) => e.distance_m <= 40),
-        stable_zone: stability >= 0.8,
-        observer_filter: c.filter,
-        boss_observation: r(observe / 100, 3),
-        mode: c.mode,
-        calm_assist: calm,
-        focus_ids: focus,
-        alert_level: alert,
-        obs_tier: obsTierOf(load),
-        lure,
-      },
-    };
+export function composeCorridor(world, tel, c, rules, { bus, now }, seq) {
+  const eeg = eegFromTel(tel);
+  const imu = imuFromTel(tel, { head_height_m: world.eye });
+  const { entities, ctl, run } = world;
+  const hostile = entities.filter((e) => e.disposition === "HOSTILE");
+  const nearest = hostile.reduce((m, e) => Math.min(m, e.distance_m), CORRIDOR_LENGTH);
+  const maxThreat = hostile.reduce((m, e) => Math.max(m, e.threat), 0);
+  const W = rules.cog_load.corridor;
+  const close = hostile.filter((e) => e.distance_m <= W.close_range_m).length;
+  const comp = ctl.composure / 100;
+  const proxN = 1 - nearest / CORRIDOR_LENGTH;
+  const lure = luciferLure(entities, imu, { composure: ctl.composure, resisting: ctl.resist, bands: eeg.bands, L: rules.lure, scene: "corridor" });
+  const autoLoad = clamp(W.base + W.max_threat * maxThreat + W.per_close_contact * close + (ctl.filter ? 0 : W.filter_off) + (1 - comp) * W.low_composure
+    + run.speed_mps * W.speed_per_mps + (run.overrun ? W.overrun : 0) + W.lure * lure.pull + (W.stance[run.stance] ?? 0));
+  bus.publishSim({ cog_load: (ctl.loadManual ? ctl.load / 100 : autoLoad) * 100 }, now);
+  tel.cog_load = bus.resolve("cog_load", now, rules.telemetry);
+  const loadPct = tel.cog_load.value;
+  const load = clamp(loadPct / 100);
+  const stability = clamp((ctl.filter ? 0.92 : 0.35) - 0.55 * proxN * (1.2 - comp));
+  const bio = bioFromTel(tel, { breath_hz: r(world.breath.hz, 3), breath_phase: r(world.breath.phase % (2 * Math.PI), 3) });
+  const ghost = c.mode === "ghost";
+  const calm = ghost && bio.heart_rate_bpm >= rules.throttle.calm_assist_bpm;
+  // Dead Core limit: only the top-N hostiles by threat x proximity get full attention
+  const focus = hostile
+    .filter((e) => e.stage !== "DETECTED")
+    .sort((a, b) => b.threat * (1.2 - b.distance_m / 100) - a.threat * (1.2 - a.distance_m / 100))
+    .slice(0, calm ? 2 : FOCUS_LIMIT)
+    .map((e) => e.id);
+  const focusD = hostile.filter((e) => focus.includes(e.id)).map((e) => e.distance_m);
+  const nearestFocus = focusD.length ? Math.min(...focusD) : null;
+  // calm by default: quiet -> peripheral -> audio -> full overlay
+  const alert = !ghost ? 3 : nearestFocus == null ? 0 : nearestFocus > 40 ? 1 : nearestFocus > 20 ? 2 : 3;
+  const throttleTier = tierOfLoad(loadPct, rules.throttle.visor_tiers);
+  const obsTier = tierOfLoad(loadPct, rules.throttle.observer_tiers);
+  return {
+    schema: "g14.hud.v1",
+    seq,
+    t_ms: Date.now(),
+    source: "TELEMETRY_BUS",
+    scene: "asylum_corridor",
+    zone: world.zone,
+    lead_m: r(world.lead_m, 1),
+    eeg,
+    imu,
+    bio,
+    env: envFromTel(tel),
+    link: { status: r(tel.link_status.value, 2) },
+    run,
+    scan: { sensor: "TSL1401CL", resonance: r(clamp(0.25 + 0.65 * proxN)), stability: r(stability), entities },
+    hud: {
+      cognitive_load: r(load),
+      throttle_tier: throttleTier,
+      target_lock: ctl.filter && hostile.some((e) => e.distance_m <= 40),
+      stable_zone: stability >= 0.8,
+      observer_filter: ctl.filter,
+      boss_observation: world.observe,
+      mode: c.mode,
+      calm_assist: calm,
+      focus_ids: focus,
+      alert_level: alert,
+      obs_tier: obsTier,
+      active_tier: c.mode === "throttle" ? obsTier : throttleTier,
+      lure,
+    },
   };
 }
 

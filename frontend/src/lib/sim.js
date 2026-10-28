@@ -75,9 +75,7 @@ const SLOTS = [
 
 export const visorStage = (d) => (d > 220 ? "DETECTED" : d > 160 ? "CLASSIFYING" : d > 90 ? "IDENTIFIED" : d > 35 ? "TRACKING" : "PROXIMITY");
 
-const CLASS_BIAS = { AHRIMANIC: 0.08, LUCIFERIC: -0.2, UNKNOWN: -0.1 };
-
-function buildEntities(c, t) {
+function buildEntities(c, t, TH) {
   const threat = c.threat / 100;
   return SLOTS.slice(0, c.entityCount).map((s, i) => {
     const T = VISOR_TYPES[s.type];
@@ -85,7 +83,7 @@ function buildEntities(c, t) {
     const ph = t * 0.3 + i * 1.7;
     const d = Math.max(3, c.distance * s.d + Math.sin(ph) * 3);
     const v = Math.max(0, -Math.cos(ph) * 0.9);
-    const th = clamp(threat * (1 - i * 0.1) + CLASS_BIAS[cls]);
+    const th = clamp(threat * (1 - i * 0.1) + TH.visor_class_bias[cls]);
     return {
       id: `E-${String(i + 1).padStart(2, "0")}`,
       class: cls,
@@ -98,7 +96,7 @@ function buildEntities(c, t) {
       distance_m: r(d, 1),
       approach_mps: r(v, 1),
       threat: r(th),
-      score: r((th * 100 * (1 + clamp(v / 4))) / Math.max(1, d), 3),
+      score: r((th * 100 * (1 + clamp(v / TH.approach_bonus_mps))) / Math.max(1, d), 3),
       ...(cls === "LUCIFERIC" ? { false_light: r(clamp(0.78 - th * 0.3 + Math.sin(t * 0.9 + i) * 0.03)) } : {}),
     };
   });
@@ -110,8 +108,7 @@ export function eegFrom(raw, t) {
   const sum = jit.reduce((a, b) => a + b, 0);
   const bands = Object.fromEntries(keys.map((k, i) => [k, r(jit[i] / sum, 3)]));
   const stasis = clamp(0.45 + bands.alpha * 1.2 + bands.theta * 0.5 - bands.beta * 0.7 - bands.gamma * 0.5);
-  const state = stasis >= 0.6 ? "STABLE" : stasis >= 0.25 ? "DRIFTING" : "UNSTABLE";
-  return { sensor: "ADS1299", bands, stasis_index: r(stasis), state };
+  return { sensor: "ADS1299", bands, stasis_index: r(stasis) };
 }
 
 // natural head motion: breathing bob + slow postural drift; optional gait = { phase, amp, breathHz }
@@ -131,62 +128,130 @@ export function headMotion(c, t, gait = null) {
   };
 }
 
-// luciferic lure: strongest false-light entity pulls the reticle; composure + steadying + calm EEG resist
-export function luciferLure(entities, imu, { composure, resisting, bands, range, gain = 1.1 }) {
-  const calm = clamp(0.5 + (bands.alpha - bands.beta) * 1.5);
-  const resist = clamp(0.45 * (composure / 100) + 0.3 * calm + (resisting ? 0.4 : 0));
+// luciferic lure: strongest false-light entity pulls the reticle; composure + steadying + calm EEG resist (weights from rules.lure)
+export function luciferLure(entities, imu, { composure, resisting, bands, L, scene }) {
+  const calm = clamp(0.5 + (bands.alpha - bands.beta) * L.calm_beta_gain);
+  const resist = clamp(L.composure_weight * (composure / 100) + L.calm_weight * calm + (resisting ? L.steady_key_weight : 0));
+  const { range_m, gain } = L[scene];
   let best = { target_id: null, pull: 0, dx_deg: 0, dy_deg: 0 };
   entities.forEach((e) => {
     if (e.class !== "LUCIFERIC" || e.stage === "DETECTED") return;
     const dx = wrap180(e.bearing_deg - imu.yaw_deg);
     if (Math.abs(dx) > FOV_H / 2) return;
-    const pull = clamp(clamp(1 - e.distance_m / range) * gain - resist * 0.9);
-    if (pull > best.pull) best = { target_id: e.id, pull, dx_deg: dx * pull * 0.7, dy_deg: (e.elevation_deg - imu.pitch_deg) * pull * 0.7 };
+    const pull = clamp(clamp(1 - e.distance_m / range_m) * gain - resist * L.resist_scale);
+    if (pull > best.pull) best = { target_id: e.id, pull, dx_deg: dx * pull * L.offset_gain, dy_deg: (e.elevation_deg - imu.pitch_deg) * pull * L.offset_gain };
   });
   return { ...best, pull: r(best.pull), dx_deg: r(best.dx_deg), dy_deg: r(best.dy_deg), resist: r(resist), resisting: !!resisting, calm: r(calm) };
 }
 
-export function makeVisorSim() {
-  let last = null;
-  let breath = 0;
-  return (c, t, seq) => {
-    const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
-    last = t;
-    const hz = c.resist ? 0.1 : 0.2 + (c.beta / 100) * 0.25;
-    breath += dt * 2 * Math.PI * hz;
-    return buildFrame(c, t, seq, { breathPhase: breath, breathHz: hz });
+const BAND_KEYS = ["delta", "theta", "alpha", "beta", "gamma"];
+export const stasisState = (s) => (s >= 0.6 ? "STABLE" : s >= 0.25 ? "DRIFTING" : "UNSTABLE");
+
+// sim-source helpers: turn simulated readings into bus channel values
+export const eegChannels = (eeg) => ({ ...Object.fromEntries(BAND_KEYS.map((k) => [`eeg_${k}`, eeg.bands[k]])), stasis: eeg.stasis_index * 100 });
+export const imuChannels = (imu) => ({ imu_yaw: imu.yaw_deg, imu_pitch: imu.pitch_deg, imu_roll: imu.roll_deg });
+
+// bus-side readers: frames are assembled only from resolved channels
+export function eegFromTel(tel) {
+  const raw = BAND_KEYS.map((k) => Math.max(0, tel[`eeg_${k}`].value));
+  const sum = raw.reduce((x, y) => x + y, 0) || 1;
+  const stasis = clamp(tel.stasis.value / 100);
+  return { sensor: "ADS1299", bands: Object.fromEntries(BAND_KEYS.map((k, i) => [k, r(raw[i] / sum, 3)])), stasis_index: r(stasis), state: stasisState(stasis) };
+}
+export const imuFromTel = (tel, extra = {}) => ({ sensor: "BMI270", yaw_deg: r(tel.imu_yaw.value, 2), pitch_deg: r(tel.imu_pitch.value, 2), roll_deg: r(tel.imu_roll.value, 2), ...extra });
+export const bioFromTel = (tel, extra = {}) => ({ sensor: "MAX30102", heart_rate_bpm: Math.round(tel.hr_bpm.value), spo2: Math.round(tel.spo2.value), ...extra });
+export const envFromTel = (tel) => ({ sensor: "EM+MLX90640+BMI270", em_ut: r(tel.em_field.value, 1), thermal_c: r(tel.temp.value, 2), imu_jitter_deg: r(tel.imu_jitter.value, 3) });
+
+// time offset + pending state so a replay can branch back into live sim
+export function simClock() {
+  let off = 0;
+  let pending = null;
+  return {
+    set: (s) => { pending = s; },
+    tick(t, apply) {
+      if (pending) {
+        off = pending.t - t;
+        apply(pending);
+        pending = null;
+      }
+      return t + off;
+    },
   };
 }
 
-export function buildFrame(c, t, seq, gait = null) {
-  const eeg = eegFrom(c, t);
-  const { bands } = eeg;
-  const threat = c.threat / 100;
-  const resonance = c.resonance / 100;
-  const stability = c.stability / 100;
-  const entities = buildEntities(c, t);
-  const imu = headMotion(c, t, gait);
-  const lure = luciferLure(entities, imu, { composure: c.composure ?? 70, resisting: c.resist, bands, range: 160 });
-  const load = clamp(0.5 * bands.beta + 0.25 * threat + 0.04 * entities.length + 0.25 * (1 - stability) + 0.12 * lure.pull);
+export function makeVisorSim() {
+  const clock = simClock();
+  let last = null;
+  let breath = 0;
+  let state = { t: 0, breath: 0 };
+  return {
+    getState: () => state,
+    setState: (s) => clock.set(s),
+    step(c, t0, rules) {
+      const t = clock.tick(t0, (s) => { breath = s.breath; last = s.t; });
+      const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
+      last = t;
+      const hz = c.resist ? 0.1 : 0.2 + (c.beta / 100) * 0.25;
+      breath += dt * 2 * Math.PI * hz;
+      state = { t, breath };
+      const eeg = eegFrom(c, t);
+      const entities = buildEntities(c, t, rules.threat);
+      const imu = headMotion(c, t, { breathPhase: breath });
+      const threat = c.threat / 100;
+      return {
+        sim: {
+          ...eegChannels(eeg), ...imuChannels(imu),
+          hr_bpm: 64 + (c.beta / 100) * 50 + threat * 12 + Math.sin(t * 1.9) * 1.5,
+          spo2: 98 - threat * 2 + Math.sin(t * 0.3) * 0.3,
+          temp: 21 + Math.sin(t * 0.7) * 0.2,
+          em_field: 45 + threat * 30 + (c.resonance / 100) * 10 + Math.sin(t * 3) * 0.8,
+          imu_jitter: 0.3 + (1 - c.stability / 100) * 0.5 + Math.sin(t * 5) * 0.04,
+          link_status: 1,
+        },
+        world: {
+          scene: "city", entities, threat, resonance: c.resonance / 100, stability: c.stability / 100,
+          ctl: { composure: c.composure ?? 70, resist: !!c.resist }, breath: { hz, phase: breath },
+        },
+      };
+    },
+  };
+}
 
+export function composeVisor(world, tel, c, rules, { bus, now }, seq) {
+  const eeg = eegFromTel(tel);
+  const imu = imuFromTel(tel);
+  const { entities, threat, resonance, stability, ctl } = world;
+  const lure = luciferLure(entities, imu, { composure: ctl.composure, resisting: ctl.resist, bands: eeg.bands, L: rules.lure, scene: "visor" });
+  const W = rules.cog_load.visor;
+  const loadSim = clamp(W.beta * eeg.bands.beta + W.threat * threat + W.per_entity * entities.length + W.instability * (1 - stability) + W.lure * lure.pull);
+  bus.publishSim({ cog_load: loadSim * 100 }, now);
+  tel.cog_load = bus.resolve("cog_load", now, rules.telemetry);
+  const load = clamp(tel.cog_load.value / 100);
+  const tier = tierOfLoad(tel.cog_load.value, rules.throttle.visor_tiers);
   return {
     schema: "g14.hud.v1",
     seq,
     t_ms: Date.now(),
-    source: "SIMULATOR",
+    source: "TELEMETRY_BUS",
+    scene: "city",
     eeg,
     imu,
-    bio: { breath_hz: r(gait?.breathHz ?? 0.23, 3), breath_phase: r((gait?.breathPhase ?? 0) % (2 * Math.PI), 3) },
+    bio: bioFromTel(tel, { breath_hz: r(world.breath.hz, 3), breath_phase: r(world.breath.phase % (2 * Math.PI), 3) }),
+    env: envFromTel(tel),
+    link: { status: r(tel.link_status.value, 2) },
     scan: { sensor: "TSL1401CL", resonance: r(resonance), stability: r(stability), entities },
     hud: {
       cognitive_load: r(load),
-      throttle_tier: load >= 0.8 ? 2 : load >= 0.6 ? 1 : 0,
+      throttle_tier: tier,
+      active_tier: tier,
       target_lock: entities.some((e) => e.class === "AHRIMANIC") && resonance >= 0.5,
       stable_zone: stability >= 0.8,
       lure,
     },
   };
 }
+
+export const tierOfLoad = (loadPct, tiers) => tiers.reduce((t, x) => (loadPct >= x.min_load && x.tier > t ? x.tier : t), 0);
 
 const PRIORITY = { compass: 1, radar: 1, stasis: 2, entities: 3, reticle: 3 };
 
