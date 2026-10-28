@@ -78,6 +78,12 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Events: possession_stage, breach_resisted, breach_takeover, breach_released on the timeline
 - Tested: iteration_10 (33/33 backend, all frontend flows); fixed after: eject no longer leaves replayed possession state live; ghost limbs made smaller/peripheral
 
+## Possession tuning presets — added 2026-06
+- rules.json `possession_presets` {active, presets: gentle/standard/brutal with description + difficulty values: drain, calm recovery, HR drain, breach window/hold/success, takeover length/release, assist strength, fatigue cap/recovery, cooldown}
+- POST /api/rules/possession-preset {name} deep-merges the preset into `possession`, sets active, writes file (404 unknown); hot-reload picks it up live
+- Rules page: 3 preset cards (one click), ACTIVE / CUSTOM detection, differing values highlighted, disabled while the editor has unsaved changes
+- Self-tested (curl + screenshot): brutal -> breach 5 s/5.5 s hold/success 30, back to standard
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data

@@ -368,5 +368,85 @@
         "lag_from_stage": 3
       }
     }
+  },
+  "possession_presets": {
+    "active": "standard",
+    "presets": {
+      "gentle": {
+        "description": "Slow drain, long breach window, short takeover, strong assist.",
+        "values": {
+          "stasis": {
+            "calm_gain_per_s": 11,
+            "entity_drain_per_s": 6,
+            "hr_drain_per_bpm_s": 0.03
+          },
+          "breach": {
+            "seconds": 12,
+            "resist_hold_s": 3,
+            "success_stasis": 50
+          },
+          "takeover": {
+            "seconds": 4,
+            "release_stasis": 35
+          },
+          "rigidity": {
+            "reduce_factor": 0.75,
+            "cap_s": 5,
+            "fatigue_recovery_mult": 0.6
+          },
+          "cooldown_s": 40
+        }
+      },
+      "standard": {
+        "description": "Baseline tuning.",
+        "values": {
+          "stasis": {
+            "calm_gain_per_s": 8,
+            "entity_drain_per_s": 10,
+            "hr_drain_per_bpm_s": 0.06
+          },
+          "breach": {
+            "seconds": 8,
+            "resist_hold_s": 4,
+            "success_stasis": 40
+          },
+          "takeover": {
+            "seconds": 6,
+            "release_stasis": 25
+          },
+          "rigidity": {
+            "reduce_factor": 0.6,
+            "cap_s": 3,
+            "fatigue_recovery_mult": 0.35
+          },
+          "cooldown_s": 25
+        }
+      },
+      "brutal": {
+        "description": "Fast drain, short breach window, long takeover, weak assist, quick fatigue.",
+        "values": {
+          "stasis": {
+            "calm_gain_per_s": 5,
+            "entity_drain_per_s": 15,
+            "hr_drain_per_bpm_s": 0.1
+          },
+          "breach": {
+            "seconds": 5,
+            "resist_hold_s": 5.5,
+            "success_stasis": 30
+          },
+          "takeover": {
+            "seconds": 9,
+            "release_stasis": 15
+          },
+          "rigidity": {
+            "reduce_factor": 0.45,
+            "cap_s": 2,
+            "fatigue_recovery_mult": 0.2
+          },
+          "cooldown_s": 12
+        }
+      }
+    }
   }
 }

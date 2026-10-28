@@ -200,6 +200,29 @@ async def put_rules(body: RulesBody):
     return await asyncio.to_thread(rules_payload)
 
 
+class PresetBody(BaseModel):
+    name: str
+
+
+def deep_merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = deep_merge(out.get(k, {}), v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
+@api_router.post("/rules/possession-preset")
+async def apply_possession_preset(body: PresetBody):
+    rules = (await asyncio.to_thread(rules_payload))["rules"]
+    presets = rules.get("possession_presets", {}).get("presets", {})
+    if body.name not in presets:
+        raise HTTPException(status_code=404, detail=f"Unknown preset: {body.name}")
+    rules["possession"] = deep_merge(rules["possession"], presets[body.name]["values"])
+    rules["possession_presets"]["active"] = body.name
+    await asyncio.to_thread(RULES_PATH.write_text, json.dumps(rules, indent=2, ensure_ascii=False) + "\n", "utf-8")
+    return await asyncio.to_thread(rules_payload)
+
+
 # ---------- recorded sessions (JSON lines, stored in chunks) ----------
 class SessionCreate(BaseModel):
     name: str

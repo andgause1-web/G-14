@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Save, RotateCcw, CheckCircle2 } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { useRules } from "@/lib/rules";
+import { PossessionPresets } from "@/components/telemetry/PossessionPresets";
 
 const SECTIONS = ["telemetry", "throttle", "cog_load", "lure", "threat", "possession"];
 
@@ -15,7 +16,8 @@ function validate(text) {
 }
 
 export default function RulesPage() {
-  const { rules, version, save } = useRules();
+  const { rules, version, save, applyPreset } = useRules();
+  const [busy, setBusy] = useState(false);
   const [text, setText] = useState("");
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState(null);
@@ -39,6 +41,18 @@ export default function RulesPage() {
     }
   };
 
+  const onPreset = async (name) => {
+    setBusy(true);
+    try {
+      await applyPreset(name);
+      toast.success(`Possession preset: ${name.toUpperCase()} — live now`);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="unreal-page" data-testid="rules-page">
       <TopBar />
@@ -55,6 +69,7 @@ export default function RulesPage() {
             </span>
           </div>
         </section>
+        {rules && <PossessionPresets rules={rules} onApply={onPreset} disabled={dirty} busy={busy} />}
         <section className="u-card">
           <textarea className="rules-editor" spellCheck={false} value={text} onChange={(e) => onChange(e.target.value)} data-testid="rules-editor" />
         </section>

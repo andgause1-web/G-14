@@ -37,7 +37,14 @@ export function RulesProvider({ children }) {
     return data;
   }, []);
 
-  return <RulesCtx.Provider value={{ ...state, save }}>{children}</RulesCtx.Provider>;
+  const applyPreset = useCallback(async (name) => {
+    const { data } = await axios.post(`${API}/rules/possession-preset`, { name });
+    ver.current = data.version;
+    setState({ rules: data.rules, version: data.version, error: null });
+    return data;
+  }, []);
+
+  return <RulesCtx.Provider value={{ ...state, save, applyPreset }}>{children}</RulesCtx.Provider>;
 }
 
 export const useRules = () => useContext(RulesCtx);
