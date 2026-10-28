@@ -23,7 +23,7 @@ export const LureCue = ({ frame, tier = 0 }) => {
   return (
     <>
       <i className={`lure-glow ${l.dx_deg < 0 ? "left" : "right"}`} style={{ opacity: on ? Math.min(0.7, l.pull) : 0 }} data-testid="lure-glow" />
-      <div className={`lure-chip obs-fade ${l.resisting ? "resisting" : ""}`} style={{ opacity: on || l.resisting ? 1 : 0 }} data-testid="lure-chip">
+      <div className={`lure-chip obs-fade ${l.dx_deg < 0 ? "side-right" : "side-left"} ${l.resisting ? "resisting" : ""}`} style={{ opacity: on || l.resisting ? 1 : 0 }} data-testid="lure-chip">
         {tier >= 2 ? (
           <span>LURE {pct}%</span>
         ) : (

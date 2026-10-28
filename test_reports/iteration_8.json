@@ -1,0 +1,40 @@
+{
+  "summary": "Tested the luciferic lure, composure/Space resistance, body audio toggles, breath/step telemetry and the Unreal kit updates. Backend: 15/15 pytest pass (9 existing + 6 new kit/lure/run tests). Frontend: all requested flows pass on Visor, Hallway (THROTTLE/3-VECTOR/ANALYST), Unreal kit and Baseline, with no console or page errors.",
+  "verified": [
+    "Visor SENSORS > OPERATOR · LURE: slider-composure and toggle-body-audio present; slider-bodyVol appears only after the toggle is on; no AudioContext errors",
+    "Visor CALM: pull 0, chip opacity 0. COMBAT: pull ~0.50, transform translate(-190..-214px, +15px) toward E-01 HALO SERAPH (left), chip opacity 1, glow on the left side, hint 'HOLD SPACE TO STEADY'",
+    "Space held after clicking the scene: PULL 47-50% -> 11%, RESIST 33% -> 75%, hint 'STEADYING · SLOW BREATH'; release restores ~47%",
+    "Space while the CALM preset button had focus did not activate it (preset stayed COMBAT)",
+    "Composure 0 gives pull 0.77 and composure 100 gives 0.38 (COMBAT). OVERLOAD at composure 0 gives 0.99, more than COMBAT. At tier 2 the chip shows only 'LURE NN%'",
+    "Visor data feed: bio.breath_hz 0.43 -> 0.1 while Space held; hud.lure has all fields",
+    "Hallway at 40 m lead: lure-wrap is present in THROTTLE/3-VECTOR/ANALYST, target P-01 MOON PYGMY, pull 0.08/0.16/0.22. At ~20 m pull 0.62 -> 0.27 with Space, then 0.65 after release",
+    "Hallway manual run + hold W: run.step 0 -> 1, speed 1.4 m/s. Crouch (C): stance crouch, eye_m and imu.head_height_m 1.11. Space: breath_hz 0.1, resisting true",
+    "Unreal page: G14HudTypes.h, the receiver cpp, the sample JSON and the README all contain the new content; the schema table has the hud.lure/run/bio rows; the zip downloads as G14Hud_UnrealKit.zip",
+    "Regression: visor contact cards render, baseline page loads"
+  ],
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Hallway ANALYST mode (also visor at close range)", "issues": ["The lure chip has a fixed position (left: calc(50% - 12.5vw - 28px), top 50%), so its text sits on top of contact cards to the left of the reticle (e.g. PAPERCLIP GOLEM card) and both are hard to read. Move the chip below the reticle or give it a backdrop / avoid card positions."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_unreal_kit_lure_run.py", "/app/backend/tests/test_g14_hud_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: move or add a backdrop to the lure chip so it does not overlap hallway contact cards",
+    "Optional: in useBodyAudio, close the AudioContext on unmount (it is only suspended now, so each page remount with audio on leaks a context)",
+    "Optional: in useResistKey, ignore Space when the event target is a text input or textarea (the capture listener currently blocks typing spaces)"
+  ],
+  "critical_code_review_comments": [
+    "useBodyAudio cleanup only calls ctx.suspend(); the AudioContext is never closed on unmount. Navigating between Visor and Hallway with audio on creates new contexts, and browsers cap how many can exist",
+    "useResistKey calls preventDefault on Space in a global capture listener. This is intended to stop buttons firing, but it also blocks keyboard activation of buttons/switches for keyboard-only users and stops spaces being typed in text inputs",
+    "At tier 2 LureCue shows only 'LURE NN%' with no resist hint, so the user is not told to hold Space while in overload. This may be intended"
+  ],
+  "updated_files": ["/app/backend/tests/test_unreal_kit_lure_run.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Kit file testids are lowercase (kit-file-g14hudtypes-h, kit-file-readme-md, kit-file-g14_hud_v1-sample-json). Hallway panel close is hallway-panel-close-button; visor uses sensor-panel-close-button. Read the data feed from document.querySelector('pre').innerText. Set the composure slider by focusing '[data-testid=slider-composure] [role=slider]' and pressing Home/End. Click the scene before holding Space."
+}
