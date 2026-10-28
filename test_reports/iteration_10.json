@@ -1,0 +1,41 @@
+{
+  "summary": "Possession Stages + Rigidity Assist tested end-to-end. Backend: possession block in GET /api/rules verified (stages S0-S5 min_stasis 76/56/36/16/1/0, tension 0/20/45/70/100, rigidity 60/0.6/0.5/3s, breach 8s/success 40, takeover release 25, egregore [sentinel, golem], profiles incl. golem lag_from_stage 2); PUT without possession -> 400; edit round-trip OK. 6/6 new tests pass, 33/33 total (one pre-existing test is flaky under xdist). Frontend: stage label/arcs/hud data-stage correct for override 80/65/45/25/10 -> S0..S4; assist = (60-s)/60 exact (0, 0.25, 0.583, 0.833). S1 jitter and false-contact tags show up; S2 drift pulls toward the source (drift.dx -3.9deg toward a left-side seraph); S3 lag 46ms (assist-reduced), ghost-limb opacity 0.6, invert-burst present in 22/118 samples over 60s; S4 breach ring countdown grows, holding Space slows it and fills hold ring, resisted after ~4s sim; no hold -> takeover-veil (S5), yaw steered toward entity, released -> S3 (stasis 25). Egregore floor works (sentinel close at stasis 65 -> 'S3 FOREIGN EGREGORE'). Overload preset reaches S4 naturally in ~7s real, then S5. Head look: arrows give +/-77deg in 4s at stasis 90 vs +42/-48 at stasis 20 (rigidity cost); drag on scene turns, drag from button does not; S4 blocks turns; hallway yaw clamped about +/-35. Hallway run speed 1.4 -> 0.9 m/s at high assist, 0 at S4. step-closer -> golem source, lag 144ms, EGREGORE floor. Record/replay: jsonl has possession_stage + breach_takeover events and w lines with game state; replay shows the same S0->S3->S4->S5 progression. Rules hot reload: pivot 90 -> assist 0.111 at stasis 80 without reload; restored. No center numbers on breach ring; lure chip uses bars. No console errors. Headless RAF ~1.5fps, so sim time runs at about 0.15x.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/telemetry (test_g14_hud_api::test_post_valid_and_latest)", "issue": "Flaky under pytest-xdist or when a browser publisher is live (latest seq is overwritten by another publisher). Passes with -n0. Test isolation only, not an app bug."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Replay eject", "issue": "While a replay plays, P.setState(game) overwrites the live possession state. eject() does not restore it, so after ejecting a replay that ended in S5 the live visor stays in replayed takeover (veil and S5 label). Only branch() should carry recorded state into live.", "affected_selectors": ["[data-testid=replay-eject-button]", "[data-testid=takeover-veil]"]}
+    ],
+    "design_issues": [
+      {"screen": "Visor/Hallway possession HUD", "issues": ["Stage label is 9px/8px at top-left 7% with low contrast at S0/S1. Readable but easy to miss (spec asks for 'tiny', so this is acceptable).", "At S3+ the ghost-limb overlay covers the cymatic radar and loadout panels (bottom corners)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_possession_rules.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Rigidity fatigue cap cannot trigger in natural play: the pool is clamped to a minimum of 1, so max assist is (60-1)/60 = 0.983, below the 0.99 'full assist' threshold. Fatigue only happens during S5 takeover (pool 0) or via override 0. Lower the threshold, or define full assist as >= a configurable value (e.g. rigidity.full_at).",
+    "Stasis 0 coming from override, serial or replay maps to S5 via stageOf without a takeover object: input 'entity', steer_yaw null, no release timer. The player is locked out indefinitely. Only enter S5 through the breach/takeover path, e.g. clamp the stage to 4 when there is no s.takeover.",
+    "Replay eject leaks the replayed possession state into live play. Snapshot P.getState() on loadSession and restore it on eject().",
+    "S4 breach/S5 takeover can happen with no hostile entity in range (EEG/HR drain only): takeover id null, steer bearing 0, cooldown no-op. Decide on the intended behaviour, e.g. skip takeover or apply a generic pulse.",
+    "The dominant source requires entity threat > 0. At the CALM preset (threat 15%) luciferic entities have threat 0, so S2 drift has no source even when an entity is within range.",
+    "corridor.js: auto run bypasses the S4/S5 input block (`fx.input !== 'full' && !auto`). Takeover drag_mps only applies when not running. After takeover, lead lerps back to c.distance, which undoes the entity walk-in.",
+    "Egregore floor applies only when the egregore is the dominant pressure source. A close sentinel/golem that is not dominant does not floor the stage at S3. Check this against the spec ('egregore skips to S3 effects when close')."
+  ],
+  "critical_code_review_comments": [
+    "possession.js: pool clamp(…,1,100) combined with the fatigue threshold assist>=0.99 makes cap_s unreachable outside takeover.",
+    "possession.js stageOf(0) returns S5 without a takeover, and nothing releases it.",
+    "useTelemetryEngine: P.setState(game) during replay is not undone on eject.",
+    "breach_takeover event logs stasis 1 (the pre-takeover tel value) although the pool is set to 0. Cosmetic.",
+    "useHeadLook: one setTimeout per RAF frame while lagged is acceptable but unbounded during long holds. Consider a timestamped input queue."
+  ],
+  "updated_files": ["/app/backend/tests/test_possession_rules.py"],
+  "success_rate": {"backend": "100% (6/6 new; 33/33 total, 1 flaky under xdist)", "frontend": "~95% (all requested flows pass; replay-eject state leak and edge-case logic issues found)"},
+  "seed_data_creation": "Created session TEST_possession_overload for replay testing, then deleted it. rules.json backed up and restored byte-for-byte.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Headless RAF is about 1.5fps, so sim time runs at about 0.15x real (breach 8s takes about 33s real, takeover 6s about 25s real). Set the stasis override with Radix slider keys: focus '[data-testid=tel-override-slider-stasis] [role=slider]', press Home, then PageUp (each = 5). Open the data feed (open-data-feed-button) and parse data-feed-json for frame.possession fx (drift, lag_ms, source_id, invert). The hallway drawer close button is hallway-panel-close-button. Run speed testid: run-speed. Calm-preset entities have threat 0, so raise slider-threat (PageUp x6) and slider-distance (Home + 4 PageUp = 45m) to get a possession source on the visor. With 3 entities, E-03 sentinel becomes hostile only when threat > 60."
+}

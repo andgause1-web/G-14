@@ -50,6 +50,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
   const rec = useRef(new Recorder()).current;
   const playerRef = useRef(null);
   const routesRef = useRef(null);
+  const liveGameRef = useRef(null);
   const eventsRef = useRef([]);
   const detectRef = useRef(makeEventDetector());
 
@@ -159,6 +160,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
     if (s.meta.scene !== scene) throw new Error(`Recorded on ${s.meta.scene} — open that page to replay it`);
     if (rec.active) rec.stop(performance.now());
     if (!routesRef.current) routesRef.current = bus.routeAll("replay");
+    if (!liveGameRef.current) liveGameRef.current = poss.current.getState();
     const p = new Player(s);
     p.playing = true;
     playerRef.current = p;
@@ -166,7 +168,10 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
     return s.meta;
   }, [rec, scene]);
 
-  const eject = useCallback(() => {
+  // eject returns to the live state from before the replay; branch keeps the replayed state
+  const eject = useCallback((keepReplayState = false) => {
+    if (!keepReplayState && liveGameRef.current) poss.current.setState(liveGameRef.current);
+    liveGameRef.current = null;
     playerRef.current = null;
     if (routesRef.current) bus.restoreRoutes(routesRef.current);
     routesRef.current = null;
@@ -181,7 +186,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
     const recC = p.controlsAt();
     sim.setState(state);
     if (recC) setControls((c) => ({ ...c, ...recC, resetKey: state.resetKey ?? recC.resetKey ?? c.resetKey, keyRun: null, resist: false }));
-    eject();
+    eject(true);
     toast.success(`Branched live at ${(p.t / 1000).toFixed(1)} s`);
   }, [sim, setControls, eject]);
 

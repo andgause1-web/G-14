@@ -70,6 +70,14 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Unit labels + SIM tags on stasis, EEG bands, vitals ring, cog load, compass, telemetry edge, baseline
 - Tested: iteration_9 (27/27 backend, all frontend flows); fixed after: rules_version in meta, spawn events at record start, resist judged on last steadying frame, ts clamped >= 0
 
+## Possession stages + Rigidity Assist — added 2026-06
+- rules.json `possession` block (required section): stasis pool weights (EEG calm vs stress, HR drain, entity pressure/range), S0-S5 stage table (min_stasis, edge colour, jitter, false tags, drift gain, lag, invert, ghost limb, input mode, lining tension, bone-conduction cue), rigidity (pivot 60, reduce 0.6, cost 0.5, cap 3 s, fatigue), breach (8 s, steady/sync rates, 4 s hold, success 40), takeover (6 s, release 25, drag, steer), cooldown, egregore (sentinel/golem, close range, contact scale, S3 floor), per-entity profiles
+- lib/possession.js: integrates stasis pool from resolved EEG/HR + entity pressure, publishes `stasis` to the bus (sim source), stage from resolved stasis, breach/takeover/cooldown, assist + fatigue, effects (jitter, drift via lure resist formula, lag, invert bursts, false tags, ghost limb, input block, move/turn scale); state recorded in session `w` lines (`game`), replayed, branchable; eject restores pre-replay live state
+- Head look: drag or arrow keys (hooks/useHeadLook.js) filtered by lag/invert/stiffness/block; takeover steers yaw to the entity and drags you forward in the hallway; run keys lagged and blocked at S4+
+- UI: stage edge arcs (cyan→amber→red, S4 directional), tiny S0-S5 label, Stiffness + lining meter on left edge, S4 breach ring around reticle (no numbers), false tags, ghost-limb overlay, takeover veil; bone-conduction cues + stage chimes (usePossessionAudio, gated by body audio toggle); lure chip now bars instead of %
+- Events: possession_stage, breach_resisted, breach_takeover, breach_released on the timeline
+- Tested: iteration_10 (33/33 backend, all frontend flows); fixed after: eject no longer leaves replayed possession state live; ghost limbs made smaller/peripheral
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data

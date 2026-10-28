@@ -111,7 +111,7 @@ const Transport = ({ rp, engine }) => {
         <button key={x} className={`deck-speed ${rp.speed === x ? "on" : ""}`} onClick={() => transport.setSpeed(x)} data-testid={`replay-speed-${x}`}>{x}×</button>
       ))}
       <button className="hud-btn" onClick={branch} data-testid="replay-branch-button"><GitBranch size={13} /> BRANCH</button>
-      <button className="icon-btn" onClick={eject} data-testid="replay-eject-button"><X size={14} /></button>
+      <button className="icon-btn" onClick={() => eject()} data-testid="replay-eject-button"><X size={14} /></button>
     </div>
   );
 };

@@ -57,8 +57,8 @@ export const PossessionHud = ({ frame }) => {
       <StageArcs p={p} />
       <StageLabel p={p} />
       <Stiffness p={p} />
-      <img src={LIMB} alt="" className="ghost-limb gl-left" style={{ opacity: p.ghost_limb ? 0.6 : 0 }} data-testid="ghost-limb-left" />
-      <img src={LIMB} alt="" className="ghost-limb gl-right" style={{ opacity: p.ghost_limb ? 0.5 : 0 }} />
+      <img src={LIMB} alt="" className="ghost-limb gl-left" style={{ opacity: p.ghost_limb ? 0.45 : 0 }} data-testid="ghost-limb-left" />
+      <img src={LIMB} alt="" className="ghost-limb gl-right" style={{ opacity: p.ghost_limb ? 0.35 : 0 }} />
       <FalseTags tags={p.false_tags} />
       {p.breach && <BreachRing b={p.breach} />}
       {p.takeover && <div className="takeover-veil" data-testid="takeover-veil" />}

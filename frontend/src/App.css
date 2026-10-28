@@ -618,17 +618,17 @@
 .poss-arcs.st-4.dir-left .pa-left, .poss-arcs.st-4.dir-right .pa-right { stroke-width: 12; opacity: 1; }
 .poss-arcs.st-4.dir-left .pa-right, .poss-arcs.st-4.dir-right .pa-left { opacity: 0.45; }
 @keyframes poss-pulse { 0%, 100% { filter: drop-shadow(0 0 4px var(--edge)); } 50% { filter: drop-shadow(0 0 18px var(--edge)); } }
-.poss-label { position: absolute; top: 10.5%; left: 7%; font-size: 9px; letter-spacing: 0.22em; text-shadow: 0 0 6px currentColor; transition: color 600ms ease; }
-.poss-label span { margin-left: 6px; opacity: 0.7; font-size: 8px; }
-.poss-label em { margin-left: 6px; font-style: normal; font-size: 7px; opacity: 0.8; }
-.stiff-meter { position: absolute; left: 2.4%; top: 30%; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 7px; letter-spacing: 0.16em; color: rgba(207, 239, 255, 0.6); }
+.poss-label { position: absolute; top: 24%; left: 2.2%; display: flex; flex-direction: column; gap: 2px; font-size: 9px; letter-spacing: 0.22em; text-shadow: 0 0 6px currentColor; transition: color 600ms ease; }
+.poss-label span { opacity: 0.7; font-size: 7px; }
+.poss-label em { font-style: normal; font-size: 7px; opacity: 0.8; }
+.stiff-meter { position: absolute; left: 2.4%; top: 31%; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 7px; letter-spacing: 0.16em; color: rgba(207, 239, 255, 0.6); }
 .sm-track { position: relative; width: 4px; height: 130px; background: rgba(0, 240, 255, 0.12); }
 .sm-track i { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(to top, #ffaa00, #ff2a4b); transition: height 300ms ease; box-shadow: 0 0 8px rgba(255, 170, 0, 0.6); }
 .stiff-meter.fatigued .sm-track i { background: #7a7f8c; box-shadow: none; animation: alert-flash 1s steps(2) infinite; }
 .stiff-meter.fatigued .sm-sub:first-of-type { color: #ffaa00; }
 .sm-lining { width: 26px; height: 3px; background: rgba(0, 240, 255, 0.12); margin-top: 6px; }
 .sm-lining i { display: block; height: 100%; background: var(--cyan); transition: width 300ms ease; }
-.ghost-limb { position: absolute; bottom: -4%; width: 30vw; max-width: 520px; mix-blend-mode: screen; transition: opacity 900ms ease; -webkit-mask-image: radial-gradient(ellipse 60% 60% at 40% 60%, #000 50%, transparent 75%); mask-image: radial-gradient(ellipse 60% 60% at 40% 60%, #000 50%, transparent 75%); animation: limb-sway 5s ease-in-out infinite; }
+.ghost-limb { position: absolute; bottom: -14%; width: 21vw; max-width: 400px; mix-blend-mode: screen; transition: opacity 900ms ease; -webkit-mask-image: radial-gradient(ellipse 60% 60% at 40% 60%, #000 50%, transparent 75%); mask-image: radial-gradient(ellipse 60% 60% at 40% 60%, #000 50%, transparent 75%); animation: limb-sway 5s ease-in-out infinite; }
 .gl-left { left: -4%; }
 .gl-right { right: -4%; transform: scaleX(-1); animation-delay: -2.5s; }
 @keyframes limb-sway { 0%, 100% { translate: 0 0; } 50% { translate: 12px -18px; } }
