@@ -61,7 +61,17 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Unreal kit: FG14RunData, FG14LureData, EG14Stance, IMU.HeadHeightM, Bio.BreathHz/BreathPhase, parsing, OnRunChanged/OnLureChanged, UpdateRun/UpdateLure widget events, sample JSON + README sections (not compiled in UE5)
 - Tested: iteration_8 (15/15 backend, all frontend flows); chip overlap design issue fixed after
 
+## Telemetry bus + record/replay + rules as data — added 2026-06
+- lib/telemetry.js bus: 17 channels (hr_bpm, spo2, eeg_*, imu_yaw/pitch/roll, imu_jitter, cog_load, stasis, temp, em_field, link_status); samples {channel,value,unit,ts,source,quality}; per-channel route sim|replay|serial(stub); stale >timeout_ms or quality<min -> sim fallback + SIM tag; manual override for sim; 9 s sparkline history
+- Pipeline (hooks/useTelemetryEngine.js): sim.step -> bus.publishSim -> replay publish -> resolveAll -> compose (visor/corridor game logic reads only resolved channels + rules) -> cog_load published/resolved -> events -> recorder; baseline page also reads via bus
+- Recorder: JSONL session (meta, k:s samples, k:w world+sim state, k:c controls, k:e events entity_spawn/lure_start/resist_result/throttle_tier) at 10 Hz, max 10 min; saved to Mongo in 2000-line chunks; export/import .g14.jsonl
+- Replay: play/pause/scrub/0.5-1-2x, event markers, REPLAY badge, Branch (sim.setState + recorded controls), cross-scene load navigates to the recording page
+- Rules: backend/config/rules.json via GET/PUT /api/rules, 2 s hot-reload poll, /rules in-app editor with validation
+- Unit labels + SIM tags on stasis, EEG bands, vitals ring, cog load, compass, telemetry edge, baseline
+- Tested: iteration_9 (27/27 backend, all frontend flows); fixed after: rules_version in meta, spawn events at record start, resist judged on last steadying frame, ts clamped >= 0
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data
+- P1: Real serial source (Web Serial / ESP32 bridge) publishing into the bus
 - P2: Saved presets/layouts; session record/replay; ESP32-CAM background; exportable HUD style settings for UMG

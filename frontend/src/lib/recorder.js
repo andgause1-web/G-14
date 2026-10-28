@@ -19,7 +19,7 @@ export class Recorder {
   }
 
   ts(now) {
-    return Math.round(now - this.t0);
+    return Math.max(0, Math.round(now - this.t0));
   }
 
   tick(now, tel, world, state, controls) {

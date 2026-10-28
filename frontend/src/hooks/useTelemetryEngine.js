@@ -6,6 +6,7 @@ import { bus, SENSOR_IDS } from "@/lib/telemetry";
 import { Recorder, MAX_MS } from "@/lib/recorder";
 import { Player, parseSession } from "@/lib/replay";
 import { makeEventDetector } from "@/lib/gameEvents";
+import { useRules } from "@/lib/rules";
 
 const CHUNK = 2000;
 const UI_MS = 33;
@@ -26,6 +27,9 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
   controlsRef.current = controls;
   const rulesRef = useRef(rules);
   rulesRef.current = rules;
+  const { version } = useRules();
+  const versionRef = useRef(version);
+  versionRef.current = version;
   const [frame, setFrame] = useState(() => {
     const now = performance.now();
     const out = sim.step(controls, 0, rules);
@@ -118,7 +122,8 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
   }, [streaming]);
 
   const startRecording = useCallback((name, notes) => {
-    rec.start({ name, notes, scene, rulesVersion: rulesRef.current?.version ?? null }, performance.now());
+    rec.start({ name, notes, scene, rulesVersion: versionRef.current }, performance.now());
+    detectRef.current = makeEventDetector();
   }, [rec, scene]);
 
   const stopRecording = useCallback(async () => {

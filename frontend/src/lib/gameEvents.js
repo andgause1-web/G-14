@@ -1,6 +1,6 @@
 // game events on the session timeline: entity spawn, lure start, resist result, throttle tier change
 export function makeEventDetector() {
-  const p = { seen: new Set(), lureOn: false, resisting: false, resistStart: 0, peak: 0, tier: null };
+  const p = { seen: new Set(), lureOn: false, resisting: false, resistStart: 0, peak: 0, lastPull: 0, tier: null };
   return (frame, now, thr) => {
     const ev = [];
     frame.scan.entities.forEach((e) => {
@@ -17,9 +17,13 @@ export function makeEventDetector() {
       p.resistStart = now;
       p.peak = l.pull;
     }
-    if (l.resisting) p.peak = Math.max(p.peak, l.pull);
+    if (l.resisting) {
+      p.peak = Math.max(p.peak, l.pull);
+      p.lastPull = l.pull;
+    }
+    // judged on the last frame while steadying, before the pull rebounds
     if (!l.resisting && p.resisting) {
-      ev.push(["resist_result", { result: l.pull < thr ? "HELD" : "BROKEN", pull: l.pull, peak_pull: p.peak, duration_ms: Math.round(now - p.resistStart) }]);
+      ev.push(["resist_result", { result: p.lastPull < thr ? "HELD" : "BROKEN", pull: p.lastPull, peak_pull: p.peak, duration_ms: Math.round(now - p.resistStart) }]);
     }
     p.resisting = l.resisting;
     const tier = frame.hud.active_tier;

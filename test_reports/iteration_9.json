@@ -1,0 +1,52 @@
+{
+  "summary": "Tested the telemetry bus, record/replay and rules-as-data refactor. Backend: 27/27 pytest pass (12 new rules/sessions tests + 15 existing). Frontend: all requested flows pass on Visor, Hallway, Rules and Baseline with no console or page errors: telemetry panel, SERIAL fallback with SIM tag, manual override, record, replay transport, branch, cross-scene load, export/import and rules hot reload. Found 4 minor recorder/event-logic issues. None blocks a flow.",
+  "verified": [
+    "GET /api/rules returns {rules, version:int}. PUT returns 400 for a missing section, for bad observer_tiers ('x', [], missing min_load, non-dict items) and when throttle is not an object. A valid PUT persists and changes version. Original rules.json restored byte-for-byte.",
+    "Sessions: create, chunks posted out of order come back joined in idx order (ndjson content-type), list plus ?scene filter, size increments, no _id, delete removes session and chunks, 404s for unknown id on chunks/jsonl/delete.",
+    "Telemetry panel on visor and hallway: 16 rows (the 15 named channels plus imu_jitter; the request says 17, but the spec list has 16), each with value+unit, sim/replay/serial buttons, quality bar, sparkline and override toggle.",
+    "SERIAL on hr_bpm (hallway), stasis and cog_load (visor): within 0.7 s the live source shows 'SIM ⟲' and sim-tag-hr_bpm / sim-tag-stasis / sim-tag-cog_load appear. Switching back to SIM removes the tags.",
+    "Override cog_load to 95: hallway data-tier 0 -> 3; visor shows OBSERVER THROTTLE T2 and 95%, live source 'SIM · MAN'. Turning it off returns to the computed value (23%, tier 0).",
+    "Record dialog: name/notes, rec-badge, stop -> toast 'Session ... saved'. The session is listed in the sessions dialog with name, notes, scene, duration and line count.",
+    "Replay: badge and full transport present. 1x ~1050 ms per s, 2x ~1650 ms per s (deck refreshes every 200 ms, headless), 0.5x ~600 ms per s, pause gives 0 advance. Scrub to 5/30/50/95% gives lead 98/72/39/20 m and HR 65/75/88/94 from the recording. A live corridor reset during replay is ignored (lead stays at the replayed value). Channel routes switch to REPLAY.",
+    "Branch: badge removed, toast 'Branched live at 16.3 s', lead stays ~21 m (pre-branch 22 m) instead of jumping to 100. Routes are restored to SIM.",
+    "Cross-scene: loading a hallway session from the visor navigates to /hallway and replays there.",
+    "Export downloads TEST_hall_rec.g14.jsonl. Import adds it to the library (4 -> 5 items) and replays it. A bad file gives toast 'Import failed: Not a G-14 session file'.",
+    "File format: meta line {k:'meta', schema:'g14.session.v1', name, notes, scene}, s lines with all fields for all 16 channels, w lines with world+state, c lines, e lines (lure_start, throttle_tier, resist_result). ts is monotonic.",
+    "Rules page: editor shows JSON. Invalid JSON and missing sections show INVALID and disable Save. Revert works. Saving tier 1/2 min_load 10/15 shows toast and the hallway tier becomes 2. A PUT through the API restoring the original triggers 'Rules config hot-reloaded' and the tier goes back to 0 with no page reload.",
+    "Baseline: fast toggle works, baseline-source-em/thermal/imu show BUS then SIM, result BASELINE STABLE.",
+    "Units: BPM, SpO2 %, STASIS %, COG LOAD %, µT, °C shown on hallway vitals chip, telemetry edge and visor readouts.",
+    "Regression: visor contact cards and lure present. Hallway lure PULL 20% -> 0% with Space ('STEADYING · SLOW BREATH'). Manual run label shown. ANALYST cards render. No console errors."
+  ],
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "PUT /api/rules", "issue": "Rewrites rules.json with json.dumps(indent=2), so the hand-formatted compact layout of the file is lost after the first in-app save. Cosmetic, but it makes the file harder to hand-edit. Consider keeping the formatting or documenting this."}
+  ]},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Record meta", "issue": "meta.rules_version is always null. useTelemetryEngine reads rulesRef.current?.version, but the pages pass only the `rules` object from useRules(); version is a separate context field.", "affected_selectors": ["record-start-button"]},
+      {"flow": "Record events", "issue": "No entity_spawn events are recorded for entities already on screen when recording starts. The event detector's `seen` set is filled before rec.start, so a visor recording had 0 events and a hallway recording had no spawn events. Fix: reset detectRef (makeEventDetector()) in startRecording, or emit spawn events for current entities at start.", "affected_selectors": []},
+      {"flow": "Resist result", "issue": "resist_result is judged on the first frame AFTER Space is released (pull has already rebounded), so the result is biased toward BROKEN. Observed result BROKEN with pull 0.68 but peak_pull during resist 0.32. Judge on the last resisting frame's pull (or the min/avg during resist).", "affected_selectors": []},
+      {"flow": "Recorder timestamps", "issue": "The first sample lines can have a negative ts (e.g. -19). rec.start uses performance.now(), but the RAF loop's `now` is the earlier frame timestamp. Harmless for replay; clamp ts at 0 or start on the next loop tick.", "affected_selectors": []}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_telemetry_rules_sessions.py", "/app/backend/tests/test_g14_hud_api.py", "/app/backend/tests/test_unreal_kit_lure_run.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Pass the rules version into useTelemetryEngine (e.g. rules + version from useRules) so meta.rules_version is set",
+    "Reset the event detector (or emit spawn events for current entities) when recording starts, so sessions contain entity_spawn events",
+    "Judge resist_result on the last resisting frame's pull, not on the frame after release",
+    "Clamp recorder ts at >= 0"
+  ],
+  "critical_code_review_comments": [
+    "telemetry.resolve: if route is replay/serial and latest[ch].sim is missing, `out` is undefined and `out.source` throws. Safe today because sim publishes every frame, but it is fragile for cog_load if compose ever skips publishing it",
+    "SessionsDialog delete has no error handling or confirm. LOAD/EXPORT fetch errors are unhandled promise rejections (no toast)",
+    "Branch does not restore the recorded HUD mode etc. unless the controls were recorded. OK by design, just noting",
+    "GET /api/sessions caps at 200 with no pagination. session_chunks has no index on (session_id, idx); add one for larger libraries"
+  ],
+  "updated_files": ["/app/backend/tests/test_telemetry_rules_sessions.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of requested flows (4 minor recorder/event-logic issues)"},
+  "seed_data_creation": "Created TEST_hall_rec / TEST_visor_rec sessions plus one imported copy; all deleted, along with session 't'. Session 'smoke run' (pre-existing) kept. rules.json restored byte-identical to the original.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use JS setter + input event to move replay-scrub (Playwright fill fails on range). In headless the recorder captures ~3 ticks/s (RAF slow). The drawer tab (controls/telemetry) persists when the panel is reopened. observer-throttle-indicator on the visor only renders when tier > 0. Back up rules.json bytes before PUT tests because PUT reformats the file."
+}
