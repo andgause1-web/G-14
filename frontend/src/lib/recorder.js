@@ -22,7 +22,7 @@ export class Recorder {
     return Math.max(0, Math.round(now - this.t0));
   }
 
-  tick(now, tel, world, state, controls) {
+  tick(now, tel, world, state, controls, game) {
     if (!this.active || now - this.last < TICK_MS) return;
     this.last = now;
     const ts = this.ts(now);
@@ -34,7 +34,7 @@ export class Recorder {
       this.lastControls = controls;
       this.lines.push(JSON.stringify({ k: "c", ts, controls }));
     }
-    this.lines.push(JSON.stringify({ k: "w", ts, world, state }));
+    this.lines.push(JSON.stringify({ k: "w", ts, world, state, game }));
   }
 
   event(now, type, data) {

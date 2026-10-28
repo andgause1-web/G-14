@@ -3,6 +3,9 @@ import { DEFAULT_VIEW, layerOpacity } from "@/lib/sim";
 import { DEFAULT_CORRIDOR, ENTITY_TYPES, makeCorridorSim, composeCorridor, CORRIDOR_LEGEND, stepCloser, ZONES, FOCUS_LIMIT, RUN } from "@/lib/corridor";
 import { useRules } from "@/lib/rules";
 import { TapeDeck } from "@/components/telemetry/TapeDeck";
+import { PossessionHud } from "@/components/hud/PossessionHud";
+import { useHeadLook } from "@/hooks/useHeadLook";
+import { usePossessionAudio } from "@/hooks/usePossessionAudio";
 import { BootScreen } from "@/components/telemetry/BootScreen";
 import { RunVectors, RunChip } from "@/components/corridor/RunVectors";
 import { LureWrap, LureCue } from "@/components/hud/LureCue";
@@ -24,23 +27,29 @@ import { TopBar } from "@/components/TopBar";
 
 const STEP_MS = 3500;
 
-// W / ↑ = walk, +Shift = sprint, C = crouch, X = prone
-function useRunKeys(active, setControls) {
+// W = walk, +Shift = sprint, C = crouch, X = prone; run keys pass the possession input filter
+function useRunKeys(active, setControls, frameRef) {
   useEffect(() => {
     if (!active) return undefined;
     const keys = { w: false, shift: false };
-    const push = () => setControls((c) => ({ ...c, keyRun: keys.w ? (keys.shift ? RUN.sprint : RUN.walk) : null }));
+    const push = () => {
+      const v = keys.w ? (keys.shift ? RUN.sprint : RUN.walk) : null;
+      const lag = frameRef.current.possession?.lag_ms ?? 0;
+      const apply = () => setControls((c) => ({ ...c, keyRun: v }));
+      if (lag > 0) setTimeout(apply, lag);
+      else apply();
+    };
     const down = (ev) => {
       if (ev.target.tagName === "INPUT" && ev.target.type === "text") return;
       const k = ev.key.toLowerCase();
-      if (k === "w" || k === "arrowup") { keys.w = true; push(); }
+      if (k === "w") { keys.w = true; push(); }
       else if (k === "shift") { keys.shift = true; push(); }
       else if (k === "c" && !ev.repeat) setControls((c) => ({ ...c, stance: c.stance === "crouch" ? "stand" : "crouch" }));
       else if (k === "x" && !ev.repeat) setControls((c) => ({ ...c, stance: c.stance === "prone" ? "stand" : "prone" }));
     };
     const up = (ev) => {
       const k = ev.key.toLowerCase();
-      if (k === "w" || k === "arrowup") keys.w = false;
+      if (k === "w") keys.w = false;
       else if (k === "shift") keys.shift = false;
       else return;
       push();
@@ -51,7 +60,7 @@ function useRunKeys(active, setControls) {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, [active, setControls]);
+  }, [active, setControls, frameRef]);
 }
 
 function useEventLog(frame, interval, resetKey) {
@@ -154,9 +163,11 @@ function Hallway({ rules }) {
     setPlaying(false);
     setControls((c) => ({ ...c, run: mode, keyRun: null, distance: c.run !== "off" ? Math.round(frameRef.current.lead_m) : c.distance }));
   }, [frameRef]);
-  useRunKeys(controls.run === "manual", setControls);
+  useRunKeys(controls.run === "manual", setControls, frameRef);
   useResistKey(setControls);
   useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
+  usePossessionAudio(frameRef, controls.bodyAudio, controls.bodyVol);
+  useHeadLook(setControls, frameRef, { yawMax: 35, pitchMax: 15 });
 
   return (
     <div className={`visor-root corridor-root tier-${tier} ${frame.hud.observer_filter ? "" : "raw-feed"} ${ghost ? "mode-ghost" : "mode-full"} ${calm ? "calm-assist" : ""} lv-${level} ${frame.replay ? "is-replay" : ""}`} style={{ "--zone": zone.accent }} onMouseMove={onMouseMove} data-testid="hallway-page">
@@ -204,6 +215,7 @@ function Hallway({ rules }) {
       </div>
       <LureCue frame={frame} tier={throttle ? frame.hud.obs_tier : tier} />
       <VisorFrame overload={tier === 2 && !calm && !throttle} critical={throttle && frame.hud.obs_tier === 3} scanlines hr={frame.bio.heart_rate_bpm} />
+      <PossessionHud frame={frame} />
       <TapeDeck engine={engine} scene="hallway" />
       <TopBar onSensors={() => setPanel(panel === "controls" ? null : "controls")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} sensorsLabel="CORRIDOR" />
       <div className="visor-hint">

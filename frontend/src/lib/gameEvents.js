@@ -1,6 +1,6 @@
 // game events on the session timeline: entity spawn, lure start, resist result, throttle tier change
 export function makeEventDetector() {
-  const p = { seen: new Set(), lureOn: false, resisting: false, resistStart: 0, peak: 0, lastPull: 0, tier: null };
+  const p = { seen: new Set(), lureOn: false, resisting: false, resistStart: 0, peak: 0, lastPull: 0, tier: null, stage: null };
   return (frame, now, thr) => {
     const ev = [];
     frame.scan.entities.forEach((e) => {
@@ -29,6 +29,12 @@ export function makeEventDetector() {
     const tier = frame.hud.active_tier;
     if (p.tier != null && tier !== p.tier) ev.push(["throttle_tier", { from: p.tier, to: tier, cog_load: frame.hud.cognitive_load }]);
     p.tier = tier;
+    const px = frame.possession;
+    if (px) {
+      if (p.stage != null && px.stage !== p.stage) ev.push(["possession_stage", { from: p.stage, to: px.stage, name: px.stage_name, stasis: px.stasis, source_id: px.source_id }]);
+      p.stage = px.stage;
+      if (px.outcome) ev.push([`breach_${px.outcome}`, { source_id: px.source_id, stasis: px.stasis }]);
+    }
     return ev;
   };
 }
@@ -38,4 +44,8 @@ export const EVENT_LABEL = {
   lure_start: (d) => `LURE ${d.target_id} ${Math.round(d.pull * 100)}%`,
   resist_result: (d) => `RESIST ${d.result}`,
   throttle_tier: (d) => `TIER ${d.from}→${d.to}`,
+  possession_stage: (d) => `S${d.from}→S${d.to} ${d.name}`,
+  breach_resisted: () => "BREACH RESISTED",
+  breach_takeover: (d) => `TAKEOVER ${d.source_id ?? ""}`,
+  breach_released: () => "RELEASED",
 };

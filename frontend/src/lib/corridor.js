@@ -1,4 +1,4 @@
-import { clamp, eegFrom, headMotion, luciferLure, eegChannels, imuChannels, eegFromTel, imuFromTel, bioFromTel, envFromTel, simClock, tierOfLoad } from "@/lib/sim";
+import { clamp, eegFrom, headMotion, luciferLure, eegChannels, imuChannels, eegFromTel, imuFromTel, bioFromTel, envFromTel, simClock, tierOfLoad, reticleOf } from "@/lib/sim";
 
 const r = (v, p = 2) => Math.round(v * 10 ** p) / 10 ** p;
 const IMG = "https://static.prod-images.emergentagent.com/jobs/e985c244-e4a3-4446-beff-f722650fda53/images/";
@@ -199,7 +199,7 @@ export function makeCorridorSim() {
   return {
     getState: () => state,
     setState: (s) => clock.set(s),
-    step(c, t0, rules) {
+    step(c, t0, rules, fx) {
       const t = clock.tick(t0, restore);
       const dt = last == null ? 0 : Math.min(0.1, Math.max(0, t - last));
       last = t;
@@ -218,6 +218,8 @@ export function makeCorridorSim() {
       let target = !running ? 0 : auto ? auto.target : c.keyRun ?? c.speed / 10;
       if (stance === "crouch") target = Math.min(target, 2);
       if (stance === "prone") target = Math.min(target, 0.6);
+      if (fx && fx.input !== "full" && !auto) target = 0;
+      target *= fx?.move_scale ?? 1;
       if (lead <= 0) target = 0;
       speed = clamp(speed + clamp(target - speed, -RUN.decel * dt, RUN.accel * dt), 0, 9);
       if (running) {
@@ -225,6 +227,10 @@ export function makeCorridorSim() {
         lead -= d;
         travelled += d;
         if (lead <= 0) speed = 0;
+      } else if (fx?.drag_mps) {
+        // takeover: the entity walks you in
+        speed = 0;
+        lead = Math.max(0, lead - fx.drag_mps * dt);
       } else {
         speed = 0;
         lead += (c.distance - lead) * Math.min(1, dt * 1.6);
@@ -283,7 +289,7 @@ export function makeCorridorSim() {
   };
 }
 
-export function composeCorridor(world, tel, c, rules, { bus, now }, seq) {
+export function composeCorridor(world, tel, c, rules, { bus, now }, seq, fx) {
   const eeg = eegFromTel(tel);
   const imu = imuFromTel(tel, { head_height_m: world.eye });
   const { entities, ctl, run } = world;
@@ -346,6 +352,7 @@ export function composeCorridor(world, tel, c, rules, { bus, now }, seq) {
       obs_tier: obsTier,
       active_tier: c.mode === "throttle" ? obsTier : throttleTier,
       lure,
+      reticle: reticleOf(lure, fx),
     },
   };
 }

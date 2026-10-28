@@ -7,6 +7,9 @@ import { DEFAULT_CONTROLS, DEFAULT_VIEW, layerOpacity, makeVisorSim, composeViso
 import { useTelemetryEngine } from "@/hooks/useTelemetryEngine";
 import { useRules } from "@/lib/rules";
 import { TapeDeck } from "@/components/telemetry/TapeDeck";
+import { PossessionHud } from "@/components/hud/PossessionHud";
+import { useHeadLook } from "@/hooks/useHeadLook";
+import { usePossessionAudio } from "@/hooks/usePossessionAudio";
 import { BootScreen } from "@/components/telemetry/BootScreen";
 import { WorldBackground, VisorFrame } from "@/components/hud/VisorFrame";
 import { EntityLayer } from "@/components/hud/EntityLayer";
@@ -55,6 +58,8 @@ function Visor({ rules }) {
   const { frame, frameRef, streamStatus } = engine;
   useResistKey(setControls);
   useBodyAudio(frameRef, controls.bodyAudio, controls.bodyVol);
+  usePossessionAudio(frameRef, controls.bodyAudio, controls.bodyVol);
+  useHeadLook(setControls, frameRef);
   const events = useStageLog(frame);
 
   const tier = view.throttling ? frame.hud.throttle_tier : 0;
@@ -87,10 +92,11 @@ function Visor({ rules }) {
       </div>
       <LureCue frame={frame} tier={tier} />
       <VisorFrame overload={tier === 2} scanlines={view.scanlines} />
+      <PossessionHud frame={frame} />
       <TapeDeck engine={engine} scene="city" />
       <TopBar onSensors={() => setPanel(panel === "sensors" ? null : "sensors")} onFeed={() => setPanel(panel === "feed" ? null : "feed")} streamStatus={streamStatus} />
       <div className="visor-hint">
-        PRESET <b data-testid="active-preset-label">{activePreset ? activePreset.toUpperCase() : "CUSTOM"}</b> · HOLD SPACE TO STEADY · {frame.replay ? "REPLAYING RECORDED SESSION" : "TELEMETRY BUS · SIM SOURCES"}
+        PRESET <b data-testid="active-preset-label">{activePreset ? activePreset.toUpperCase() : "CUSTOM"}</b> · DRAG / ARROWS TO LOOK · HOLD SPACE TO STEADY · {frame.replay ? "REPLAYING RECORDED SESSION" : "TELEMETRY BUS · SIM SOURCES"}
       </div>
       <SensorPanel open={panel === "sensors"} onClose={closePanel} controls={controls} setControls={setControls}
         view={view} setView={setView} activePreset={activePreset} setActivePreset={setActivePreset} telemetry={frame.telemetry} />

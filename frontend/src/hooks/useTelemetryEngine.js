@@ -6,6 +6,7 @@ import { bus, SENSOR_IDS } from "@/lib/telemetry";
 import { Recorder, MAX_MS } from "@/lib/recorder";
 import { Player, parseSession } from "@/lib/replay";
 import { makeEventDetector } from "@/lib/gameEvents";
+import { makePossession } from "@/lib/possession";
 import { useRules } from "@/lib/rules";
 
 const CHUNK = 2000;
@@ -25,6 +26,8 @@ export async function uploadSession(rec) {
 export function useTelemetryEngine({ scene, sim, compose, controls, setControls, rules, streaming }) {
   const controlsRef = useRef(controls);
   controlsRef.current = controls;
+  const poss = useRef(null);
+  if (!poss.current) poss.current = makePossession();
   const rulesRef = useRef(rules);
   rulesRef.current = rules;
   const { version } = useRules();
@@ -32,10 +35,12 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
   versionRef.current = version;
   const [frame, setFrame] = useState(() => {
     const now = performance.now();
-    const out = sim.step(controls, 0, rules);
+    const out = sim.step(controls, 0, rules, null);
     bus.publishSim(out.sim, now);
-    const f = compose(out.world, bus.resolveAll(SENSOR_IDS, now, rules.telemetry), controls, rules, { bus, now }, 0);
-    return Object.assign(f, { telemetry: bus.meta(), replay: null, recording: false });
+    const tel = bus.resolveAll(SENSOR_IDS, now, rules.telemetry);
+    const fx = poss.current.step(0, tel, out.world, rules, { bus, now }, scene === "city" ? "visor" : "corridor");
+    const f = compose(out.world, tel, controls, rules, { bus, now }, 0, fx);
+    return Object.assign(f, { possession: fx, telemetry: bus.meta(), replay: null, recording: false });
   });
   const frameRef = useRef(frame);
   const stopRef = useRef(null);
@@ -59,18 +64,29 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
     const loop = (now) => {
       const R = rulesRef.current;
       const c = controlsRef.current;
-      const out = sim.step(c, (now - t0) / 1000, R);
+      const P = poss.current;
+      const out = sim.step(c, (now - t0) / 1000, R, P.fx());
       bus.publishSim(out.sim, now);
       const player = playerRef.current;
       let world = out.world;
+      let game = null;
       if (player) {
         player.advance(now - prevNow);
         player.publish(now, bus);
-        world = player.frameAt().world;
+        ({ world, game } = player.frameAt());
       }
+      const dtS = Math.min(0.1, (now - prevNow) / 1000);
       prevNow = now;
+      const ctx = { bus, now };
       const tel = bus.resolveAll(SENSOR_IDS, now, R.telemetry);
-      const f = compose(world, tel, c, R, { bus, now }, seq);
+      let fx;
+      if (game?.fx) {
+        P.setState(game);
+        tel.stasis = bus.resolve("stasis", now, R.telemetry);
+        fx = game.fx;
+      } else fx = P.step(dtS, tel, world, R, ctx, scene === "city" ? "visor" : "corridor");
+      const f = compose(world, tel, c, R, ctx, seq, fx);
+      f.possession = fx;
       f.telemetry = bus.meta();
       f.replay = player ? { t_ms: Math.round(player.t), duration_ms: player.duration, playing: player.playing, speed: player.speed } : null;
       f.recording = rec.active;
@@ -78,7 +94,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
         rec.event(now, type, data);
         if (!player) eventsRef.current = [{ type, data, k: now + Math.random() }, ...eventsRef.current].slice(0, 30);
       });
-      if (!player) rec.tick(now, tel, world, sim.getState(), c);
+      if (!player) rec.tick(now, tel, world, sim.getState(), c, P.getState());
       if (rec.active && rec.elapsed(now) > MAX_MS) {
         toast.warning("Recording hit the 10-minute limit");
         stopRef.current();
@@ -102,7 +118,7 @@ export function useTelemetryEngine({ scene, sim, compose, controls, setControls,
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [sim, compose, rec]);
+  }, [sim, compose, rec, scene]);
 
   useEffect(() => {
     if (!streaming) {

@@ -45,7 +45,7 @@ export const ToggleRow = ({ id, label, checked, onChange }) => (
 
 export const BodyAudioRows = ({ controls, set }) => (
   <>
-    <ToggleRow id="body-audio" label="Footstep + breathing audio" checked={controls.bodyAudio} onChange={(v) => set("bodyAudio", v)} />
+    <ToggleRow id="body-audio" label="Body + possession audio (footsteps, breath, bone-conduction cues)" checked={controls.bodyAudio} onChange={(v) => set("bodyAudio", v)} />
     {controls.bodyAudio && <SliderRow id="bodyVol" label="Body audio volume %" min={0} max={100} value={controls.bodyVol} onChange={set} />}
   </>
 );

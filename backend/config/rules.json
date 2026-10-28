@@ -6,24 +6,69 @@
   },
   "throttle": {
     "observer_tiers": [
-      { "tier": 0, "name": "CALM", "min_load": 0 },
-      { "tier": 1, "name": "ALERT", "min_load": 40 },
-      { "tier": 2, "name": "HIGH", "min_load": 70 },
-      { "tier": 3, "name": "CRITICAL", "min_load": 90 }
+      {
+        "tier": 0,
+        "name": "CALM",
+        "min_load": 0
+      },
+      {
+        "tier": 1,
+        "name": "ALERT",
+        "min_load": 40
+      },
+      {
+        "tier": 2,
+        "name": "HIGH",
+        "min_load": 70
+      },
+      {
+        "tier": 3,
+        "name": "CRITICAL",
+        "min_load": 90
+      }
     ],
     "visor_tiers": [
-      { "tier": 0, "name": "NOMINAL", "min_load": 0 },
-      { "tier": 1, "name": "THROTTLED", "min_load": 60 },
-      { "tier": 2, "name": "OVERLOAD", "min_load": 80 }
+      {
+        "tier": 0,
+        "name": "NOMINAL",
+        "min_load": 0
+      },
+      {
+        "tier": 1,
+        "name": "THROTTLED",
+        "min_load": 60
+      },
+      {
+        "tier": 2,
+        "name": "OVERLOAD",
+        "min_load": 80
+      }
     ],
     "calm_assist_bpm": 110
   },
   "cog_load": {
-    "visor": { "beta": 0.5, "threat": 0.25, "per_entity": 0.04, "instability": 0.25, "lure": 0.12 },
+    "visor": {
+      "beta": 0.5,
+      "threat": 0.25,
+      "per_entity": 0.04,
+      "instability": 0.25,
+      "lure": 0.12
+    },
     "corridor": {
-      "base": 0.12, "max_threat": 0.45, "per_close_contact": 0.05, "close_range_m": 40,
-      "filter_off": 0.3, "low_composure": 0.15, "speed_per_mps": 0.055, "overrun": 0.1, "lure": 0.12,
-      "stance": { "stand": 0, "crouch": -0.04, "prone": -0.07 }
+      "base": 0.12,
+      "max_threat": 0.45,
+      "per_close_contact": 0.05,
+      "close_range_m": 40,
+      "filter_off": 0.3,
+      "low_composure": 0.15,
+      "speed_per_mps": 0.055,
+      "overrun": 0.1,
+      "lure": 0.12,
+      "stance": {
+        "stand": 0,
+        "crouch": -0.04,
+        "prone": -0.07
+      }
     }
   },
   "lure": {
@@ -34,16 +79,294 @@
     "resist_scale": 0.9,
     "offset_gain": 0.7,
     "show_threshold": 0.12,
-    "visor": { "range_m": 160, "gain": 1.1 },
-    "corridor": { "range_m": 70, "gain": 1.5 }
+    "visor": {
+      "range_m": 160,
+      "gain": 1.1
+    },
+    "corridor": {
+      "range_m": 70,
+      "gain": 1.5
+    }
   },
   "threat": {
-    "visor_class_bias": { "AHRIMANIC": 0.08, "LUCIFERIC": -0.2, "UNKNOWN": -0.1 },
-    "corridor_base": { "pygmy": 0.45, "wraith": 0.6, "golem": 0.85, "gnome": 0.15, "boss": 0.5 },
-    "gnome_mood": { "NEUTRAL": 0.15, "SUBMITTED": 0.03, "HOSTILE": 0.75 },
-    "counter_multiplier": { "golem": 0.4, "wraith": 0.35 },
+    "visor_class_bias": {
+      "AHRIMANIC": 0.08,
+      "LUCIFERIC": -0.2,
+      "UNKNOWN": -0.1
+    },
+    "corridor_base": {
+      "pygmy": 0.45,
+      "wraith": 0.6,
+      "golem": 0.85,
+      "gnome": 0.15,
+      "boss": 0.5
+    },
+    "gnome_mood": {
+      "NEUTRAL": 0.15,
+      "SUBMITTED": 0.03,
+      "HOSTILE": 0.75
+    },
+    "counter_multiplier": {
+      "golem": 0.4,
+      "wraith": 0.35
+    },
     "pygmy_composure_factor": 1.4,
     "non_hostile_weight": 0.3,
     "approach_bonus_mps": 4
+  },
+  "possession": {
+    "stasis": {
+      "start": 100,
+      "calm_gain_per_s": 8,
+      "hr_above_bpm": 95,
+      "hr_drain_per_bpm_s": 0.06,
+      "entity_drain_per_s": 10,
+      "pressure_range_m": {
+        "visor": 80,
+        "corridor": 30
+      }
+    },
+    "stages": [
+      {
+        "jitter_deg": [
+          0,
+          0
+        ],
+        "false_tags_per_s": 0,
+        "drift_gain": 0,
+        "lag_ms": [
+          0,
+          0
+        ],
+        "invert": false,
+        "ghost_limb": false,
+        "input": "full",
+        "tension": 0,
+        "cue": "none",
+        "stage": 0,
+        "name": "ANCHORED",
+        "min_stasis": 76,
+        "edge": "#00f0ff"
+      },
+      {
+        "jitter_deg": [
+          0.5,
+          1
+        ],
+        "false_tags_per_s": 0.35,
+        "drift_gain": 0,
+        "lag_ms": [
+          0,
+          0
+        ],
+        "invert": false,
+        "ghost_limb": false,
+        "input": "full",
+        "tension": 20,
+        "cue": "mastoid_tick",
+        "stage": 1,
+        "name": "TREMOR",
+        "min_stasis": 56,
+        "edge": "#7fe9ff"
+      },
+      {
+        "jitter_deg": [
+          0.4,
+          0.8
+        ],
+        "false_tags_per_s": 0.2,
+        "drift_gain": 1.2,
+        "lag_ms": [
+          0,
+          0
+        ],
+        "invert": false,
+        "ghost_limb": false,
+        "input": "full",
+        "tension": 45,
+        "cue": "mandible_pulse",
+        "stage": 2,
+        "name": "DRIFT",
+        "min_stasis": 36,
+        "edge": "#ffaa00"
+      },
+      {
+        "jitter_deg": [
+          0.3,
+          0.6
+        ],
+        "false_tags_per_s": 0.1,
+        "drift_gain": 1.0,
+        "lag_ms": [
+          80,
+          150
+        ],
+        "invert": true,
+        "ghost_limb": true,
+        "input": "full",
+        "tension": 70,
+        "cue": "occipital_pressure",
+        "stage": 3,
+        "name": "FOREIGN",
+        "min_stasis": 16,
+        "edge": "#ff6a2a"
+      },
+      {
+        "jitter_deg": [
+          0.3,
+          0.6
+        ],
+        "false_tags_per_s": 0,
+        "drift_gain": 1.0,
+        "lag_ms": [
+          80,
+          150
+        ],
+        "invert": false,
+        "ghost_limb": true,
+        "input": "resist_only",
+        "tension": 100,
+        "cue": "max_pressure",
+        "stage": 4,
+        "name": "BREACH IMMINENT",
+        "min_stasis": 1,
+        "edge": "#ff2a4b"
+      },
+      {
+        "jitter_deg": [
+          0,
+          0
+        ],
+        "false_tags_per_s": 0,
+        "drift_gain": 0,
+        "lag_ms": [
+          0,
+          0
+        ],
+        "invert": false,
+        "ghost_limb": true,
+        "input": "entity",
+        "tension": 100,
+        "cue": "pulse_release",
+        "stage": 5,
+        "name": "BREACH",
+        "min_stasis": 0,
+        "edge": "#ff2a4b"
+      }
+    ],
+    "rigidity": {
+      "pivot_stasis": 60,
+      "reduce_factor": 0.6,
+      "stiffness_cost": 0.5,
+      "cap_s": 3,
+      "fatigue_recovery_mult": 0.35
+    },
+    "breach": {
+      "seconds": 8,
+      "steady_rate": 0.6,
+      "sync_rate": 0.35,
+      "resist_hold_s": 4,
+      "success_stasis": 40
+    },
+    "takeover": {
+      "seconds": 6,
+      "release_stasis": 25,
+      "pulse_s": 0.6,
+      "drag_mps": 1.0,
+      "steer_rate": 1.5
+    },
+    "cooldown_s": 25,
+    "invert_burst_s": [
+      1,
+      2
+    ],
+    "invert_every_s": [
+      4,
+      8
+    ],
+    "egregore": {
+      "types": [
+        "sentinel",
+        "golem"
+      ],
+      "close_m": {
+        "visor": 40,
+        "corridor": 25
+      },
+      "contact_scale": 0.35,
+      "floor_stage": 3
+    },
+    "profiles": {
+      "default": {
+        "drain": 1,
+        "jitter": 1,
+        "drift": 1,
+        "lag": 1,
+        "lag_from_stage": 3
+      },
+      "pygmy": {
+        "drain": 0.8,
+        "jitter": 1.6,
+        "drift": 1.5,
+        "lag": 0.5,
+        "lag_from_stage": 3
+      },
+      "gnome": {
+        "drain": 0.8,
+        "jitter": 1.6,
+        "drift": 1.5,
+        "lag": 0.5,
+        "lag_from_stage": 3
+      },
+      "wraith": {
+        "drain": 1,
+        "jitter": 1.2,
+        "drift": 1.3,
+        "lag": 0.8,
+        "lag_from_stage": 3
+      },
+      "seraph": {
+        "drain": 0.9,
+        "jitter": 1.3,
+        "drift": 1.4,
+        "lag": 0.6,
+        "lag_from_stage": 3
+      },
+      "shard": {
+        "drain": 0.9,
+        "jitter": 1.5,
+        "drift": 1.2,
+        "lag": 0.6,
+        "lag_from_stage": 3
+      },
+      "choir": {
+        "drain": 0.9,
+        "jitter": 1.2,
+        "drift": 1.5,
+        "lag": 0.6,
+        "lag_from_stage": 3
+      },
+      "golem": {
+        "drain": 1.2,
+        "jitter": 0.6,
+        "drift": 0.8,
+        "lag": 1.8,
+        "lag_from_stage": 2
+      },
+      "sentinel": {
+        "drain": 1.3,
+        "jitter": 0.6,
+        "drift": 1.0,
+        "lag": 1.4,
+        "lag_from_stage": 3
+      },
+      "boss": {
+        "drain": 0.6,
+        "jitter": 1,
+        "drift": 1,
+        "lag": 1,
+        "lag_from_stage": 3
+      }
+    }
   }
 }

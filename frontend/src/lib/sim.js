@@ -129,9 +129,13 @@ export function headMotion(c, t, gait = null) {
 }
 
 // luciferic lure: strongest false-light entity pulls the reticle; composure + steadying + calm EEG resist (weights from rules.lure)
-export function luciferLure(entities, imu, { composure, resisting, bands, L, scene }) {
+export function resistOf(composure, resisting, bands, L) {
   const calm = clamp(0.5 + (bands.alpha - bands.beta) * L.calm_beta_gain);
-  const resist = clamp(L.composure_weight * (composure / 100) + L.calm_weight * calm + (resisting ? L.steady_key_weight : 0));
+  return { calm, resist: clamp(L.composure_weight * (composure / 100) + L.calm_weight * calm + (resisting ? L.steady_key_weight : 0)) };
+}
+
+export function luciferLure(entities, imu, { composure, resisting, bands, L, scene }) {
+  const { calm, resist } = resistOf(composure, resisting, bands, L);
   const { range_m, gain } = L[scene];
   let best = { target_id: null, pull: 0, dx_deg: 0, dy_deg: 0 };
   entities.forEach((e) => {
@@ -148,7 +152,7 @@ const BAND_KEYS = ["delta", "theta", "alpha", "beta", "gamma"];
 export const stasisState = (s) => (s >= 0.6 ? "STABLE" : s >= 0.25 ? "DRIFTING" : "UNSTABLE");
 
 // sim-source helpers: turn simulated readings into bus channel values
-export const eegChannels = (eeg) => ({ ...Object.fromEntries(BAND_KEYS.map((k) => [`eeg_${k}`, eeg.bands[k]])), stasis: eeg.stasis_index * 100 });
+export const eegChannels = (eeg) => Object.fromEntries(BAND_KEYS.map((k) => [`eeg_${k}`, eeg.bands[k]]));
 export const imuChannels = (imu) => ({ imu_yaw: imu.yaw_deg, imu_pitch: imu.pitch_deg, imu_roll: imu.roll_deg });
 
 // bus-side readers: frames are assembled only from resolved channels
@@ -217,7 +221,7 @@ export function makeVisorSim() {
   };
 }
 
-export function composeVisor(world, tel, c, rules, { bus, now }, seq) {
+export function composeVisor(world, tel, c, rules, { bus, now }, seq, fx) {
   const eeg = eegFromTel(tel);
   const imu = imuFromTel(tel);
   const { entities, threat, resonance, stability, ctl } = world;
@@ -247,9 +251,16 @@ export function composeVisor(world, tel, c, rules, { bus, now }, seq) {
       target_lock: entities.some((e) => e.class === "AHRIMANIC") && resonance >= 0.5,
       stable_zone: stability >= 0.8,
       lure,
+      reticle: reticleOf(lure, fx),
     },
   };
 }
+
+// final reticle offset: luciferic lure + possession drift + tremor jitter
+export const reticleOf = (lure, fx) => ({
+  dx_deg: r(lure.dx_deg + (fx?.drift.dx_deg ?? 0) + (fx?.jitter.x ?? 0), 3),
+  dy_deg: r(lure.dy_deg + (fx?.drift.dy_deg ?? 0) + (fx?.jitter.y ?? 0), 3),
+});
 
 export const tierOfLoad = (loadPct, tiers) => tiers.reduce((t, x) => (loadPct >= x.min_load && x.tier > t ? x.tier : t), 0);
 

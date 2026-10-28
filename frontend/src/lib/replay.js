@@ -81,7 +81,7 @@ export class Player {
     const a = w[i];
     const b = w[i + 1];
     const f = b ? (this.t - a.ts) / Math.max(1, b.ts - a.ts) : 0;
-    return { world: blendWorld(a.world, b?.world, Math.min(1, Math.max(0, f))), state: a.state };
+    return { world: blendWorld(a.world, b?.world, Math.min(1, Math.max(0, f))), state: a.state, game: a.game };
   }
 
   controlsAt() {

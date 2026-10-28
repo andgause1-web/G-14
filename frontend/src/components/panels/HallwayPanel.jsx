@@ -50,7 +50,7 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
             ))}
           </div>
         )}
-        <div className="hint-text">Manual: W / ↑ walk, hold Shift to sprint, C crouch, X prone (otherwise cruise speed slider). Auto: scripted walk → sprint → slow → crouch near contacts. Speed raises load tier; path lines and brake line follow speed and eye height.</div>
+        <div className="hint-text">Manual: W walk, hold Shift to sprint, C crouch, X prone (otherwise cruise speed slider). Auto: scripted walk → sprint → slow → crouch near contacts. Speed raises load tier; path lines and brake line follow speed and eye height.</div>
 
         <div className="group-title">ZONE ROOM <span className="jp">区域</span></div>
         <div className="zone-grid">

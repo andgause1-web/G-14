@@ -18,7 +18,8 @@ export const CHANNELS = [
   { id: "link_status", label: "LINK", unit: "q", min: 0, max: 1, sensor: "ESP32" },
 ];
 export const CH = Object.fromEntries(CHANNELS.map((c) => [c.id, c]));
-export const SENSOR_IDS = CHANNELS.filter((c) => c.id !== "cog_load").map((c) => c.id);
+// cog_load and stasis are derived each frame (compose / possession) and resolved after the sensors
+export const SENSOR_IDS = CHANNELS.filter((c) => c.id !== "cog_load" && c.id !== "stasis").map((c) => c.id);
 export const SOURCES = ["sim", "replay", "serial"];
 const HIST_N = 90;
 const HIST_MS = 100;

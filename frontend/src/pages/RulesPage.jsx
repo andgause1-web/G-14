@@ -4,7 +4,7 @@ import { Save, RotateCcw, CheckCircle2 } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { useRules } from "@/lib/rules";
 
-const SECTIONS = ["telemetry", "throttle", "cog_load", "lure", "threat"];
+const SECTIONS = ["telemetry", "throttle", "cog_load", "lure", "threat", "possession"];
 
 function validate(text) {
   const obj = JSON.parse(text);
