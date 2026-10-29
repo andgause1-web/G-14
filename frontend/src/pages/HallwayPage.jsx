@@ -39,7 +39,7 @@ function useTurretKeys(setControls) {
       if (ev.repeat && k !== "t") return;
       if (k === "g") turretCmd(setControls, "deploy");
       else if (k === "f") turretCmd(setControls, "fire");
-      else if (k === "m") setControls((c) => ({ ...c, turretMode: c.turretMode === "acoustic" ? "laser" : "acoustic" }));
+      else if (k === "m") setControls((c) => ({ ...c, turretMode: { auto: "laser", laser: "acoustic", acoustic: "auto" }[c.turretMode] }));
       else if (k === "t") setControls((c) => (c.turretShutdown ? c : { ...c, turretShutdown: true }));
     };
     const up = (ev) => { if (ev.key.toLowerCase() === "t") setControls((c) => ({ ...c, turretShutdown: false })); };

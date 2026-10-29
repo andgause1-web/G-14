@@ -101,7 +101,7 @@ export const DEFAULT_CORRIDOR = {
   distance: 100, interval: 20, composure: 70, filter: true, tone: false, thermal: false, gnomeMood: "NEUTRAL",
   yaw: 0, pitch: 0, roll: 0, autoSway: true, resetKey: 0, zone: "wards", mode: "throttle", audio: true, gaze: 0, mouseGaze: false, loadManual: false, load: 30,
   run: "off", speed: 0, bodyHeight: 178, stance: "stand", keyRun: null, resist: false, bodyAudio: false, bodyVol: 50,
-  turretMode: "acoustic", toneHz: 528, turretArmed: true, turretModule: "none", dampen: false, turretCmd: { n: 0 }, turretShutdown: false,
+  turretMode: "auto", toneHz: 528, turretArmed: true, turretModule: "none", dampen: false, turretCmd: { n: 0 }, turretShutdown: false,
   show: { pygmy: true, wraith: true, golem: true, gnome: true, boss: true },
 };
 

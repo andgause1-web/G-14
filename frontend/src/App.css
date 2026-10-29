@@ -675,6 +675,12 @@
 @keyframes ts-wave { 0%, 100% { fill-opacity: 0.6; } 50% { fill-opacity: 1.4; } }
 .ts-laser { stroke: #ff2a4b; stroke-width: 2; filter: drop-shadow(0 0 6px #ff2a4b); }
 .ts-laser.ign-failed, .ts-laser.ign-aborted { stroke: #ffaa00; stroke-dasharray: 6 6; }
+.ts-lock circle { fill: none; transform: rotate(-90deg); }
+.ts-lock .tl-track { stroke: rgba(126, 243, 255, 0.15); stroke-width: 1.5; }
+.ts-lock .tl-fill { stroke: rgba(126, 243, 255, 0.75); stroke-width: 2; transition: stroke-dashoffset 300ms ease-out, stroke 300ms ease-out; }
+.ts-lock text { fill: rgba(207, 239, 255, 0.7); font-size: 8px; letter-spacing: 0.18em; }
+.ts-lock.locked .tl-fill { stroke: #00ff9d; filter: drop-shadow(0 0 5px #00ff9d); }
+.ts-lock.locked text { fill: #00ff9d; }
 .ts-turned { fill: none; stroke: var(--red); stroke-width: 2; animation: alert-flash 0.6s steps(2) infinite; }
 .turret-strip { position: absolute; right: 6.5%; bottom: 23%; z-index: 14; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; font-size: 9px; letter-spacing: 0.16em; color: rgba(207, 239, 255, 0.75); --st: rgba(207, 239, 255, 0.5); }
 .turret-strip.tone-good { --st: #00ff9d; } .turret-strip.tone-info { --st: var(--cyan); } .turret-strip.tone-bad { --st: var(--red); }

@@ -8,7 +8,7 @@ const IGN = { idle: 0, verifying: 1, verified: 2, failed: -1, aborted: -2 };
 const fresh = (T) => ({
   status: "stowed", deployLeft: 0, back: 0, dropAt: 0, battery: 100, temp: T.heat.ambient_c, pulses: T.pulse_budget,
   heading: 0, tilt: 0, conf: 0, targetId: null, cooldown: 0, ign: "idle", ignLeft: 0, peltier: false, peltierOn: 0, peltierCd: 0,
-  ent: {}, pool: 100, pStage: 0, shutdownHeld: 0, cmd: 0, toneOn: false, jit: 0,
+  ent: {}, autoHz: 528, effMode: null, pool: 100, pStage: 0, shutdownHeld: 0, cmd: 0, toneOn: false, jit: 0,
 });
 
 // G-13 Wolf-Trap: placeable ally; reads the bus, the possession table and rules.turret
@@ -92,7 +92,9 @@ export function makeTurret() {
       const alive = world.entities.filter((e) => !s.ent[e.id]?.killed && (e.type !== "gnome" || e.disposition === "HOSTILE"));
       // laser mode favours contacts it can finish (PRIMED or low resist); otherwise the HUD threat score
       const finishable = (e) => (s.ent[e.id]?.stagger ?? 0) >= 1 || (s.ent[e.id]?.resist ?? 1) < T.laser.finish_resist_below;
-      const rank = (e) => (c.turretMode === "laser" && finishable(e) ? 1000 : 0) + e.score;
+      const auto = c.turretMode === "auto";
+      const laserPref = c.turretMode === "laser" || (auto && s.cooldown <= 0 && s.pulses > 0);
+      const rank = (e) => (laserPref && finishable(e) ? 1000 : 0) + e.score;
       let target = null;
       if (s.status === "active") {
         target = alive.filter((e) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d <= T.laser.range_m * mod.range_mult)
@@ -111,6 +113,29 @@ export function makeTurret() {
       s.conf = target ? clamp(T.confidence.base - T.confidence.per_m * geo(target).d - T.confidence.jitter_penalty * Math.abs(s.jit) / 2 - T.confidence.aim_error_penalty * Math.abs(err) + (Math.random() - 0.5) * T.confidence.noise, 0, 100) : 0;
       const conf = R.turret_confidence.value;
       const heatF = clamp(1 - (temp - H.throttle_from_c) / (H.max_c - H.throttle_from_c));
+      const A = T.acoustic;
+      const L = T.laser;
+
+      // AUTO: laser at long range while it can fire, Wolf-Tone once contacts close in or the laser is unavailable
+      const AU = T.auto;
+      let mode = c.turretMode;
+      let autoWhy = null;
+      if (auto) {
+        if (!target) autoWhy = "no_target";
+        else if (geo(target).d <= AU.switch_m) autoWhy = "close";
+        else if ((target.approach_mps ?? 0) > L.max_target_mps) autoWhy = "too_fast";
+        else if (s.pulses <= 0) autoWhy = "no_pulses";
+        else if (heatF < AU.min_heat_factor) autoWhy = "heat";
+        else if (s.ign === "failed") autoWhy = "ignition";
+        else if (s.cooldown > 0) autoWhy = "cooldown";
+        mode = target && !autoWhy ? "laser" : "acoustic";
+        if (s.status === "active" && mode !== s.effMode) { log("auto_switch", { to: mode, reason: autoWhy ?? "range" }); s.effMode = mode; }
+      } else s.effMode = mode;
+      const band = target ? T.resonance[target.type] : null;
+      if (auto && band) s.autoHz += Math.sign(band.hz - s.autoHz) * Math.min(Math.abs(band.hz - s.autoHz), AU.sweep_hz_per_s * dt);
+      const hz = Math.round(auto ? s.autoHz : c.toneHz);
+      const toneLock = band ? clamp(1 - Math.abs(hz - band.hz) / A.band_width_hz) : 0;
+      if (auto && mode === "laser" && s.status === "active" && s.cooldown <= 0 && R.turret_confidence.value >= AU.min_conf) s.fireQueued = true;
 
       // per-entity control state decays
       Object.values(s.ent).forEach((x) => {
@@ -122,16 +147,15 @@ export function makeTurret() {
 
       // acoustic Wolf-Tone: cone beam, damage scales with closeness to each entity's resonance band
       const inCone = alive.filter((e) => { const g = geo(e); return g.d > 0 && g.d <= range && Math.abs(g.b - s.heading) <= cone / 2; });
-      const toneOn = s.status === "active" && c.turretMode === "acoustic" && c.turretArmed && heatF > 0 && battery > 0 && inCone.length > 0;
-      if (toneOn !== s.toneOn) { s.toneOn = toneOn; log(toneOn ? "acoustic_on" : "acoustic_off", { hz: c.toneHz }); }
-      const A = T.acoustic;
+      const toneOn = s.status === "active" && mode === "acoustic" && (auto || c.turretArmed) && heatF > 0 && battery > 0 && inCone.length > 0;
+      if (toneOn !== s.toneOn) { s.toneOn = toneOn; log(toneOn ? "acoustic_on" : "acoustic_off", { hz }); }
       const hit = new Set();
       if (toneOn) {
         s.battery -= B.acoustic_per_s * dt;
         s.temp += H.acoustic_per_s * dt;
         inCone.forEach((e) => {
           const band = T.resonance[e.type];
-          let close = band ? clamp(1 - Math.abs(c.toneHz - band.hz) / A.band_width_hz) * band.strength * heatF : 0;
+          let close = band ? clamp(1 - Math.abs(hz - band.hz) / A.band_width_hz) * band.strength * heatF : 0;
           if (band?.decoy_mult && mod.decoy) close *= band.decoy_mult;
           const x = E(e.id);
           if (P.egregore.types.includes(e.type)) x.damp = T.egregore_tone.pull_reduction * clamp(close + T.egregore_tone.strength);
@@ -150,14 +174,13 @@ export function makeTurret() {
       });
 
       // laser: ignition check, snowball abort > max_target_mps, long cooldown, only finisher
-      const L = T.laser;
       s.cooldown = Math.max(0, s.cooldown - dt * Math.max(0.25, heatF));
       if (s.ignLeft > 0) { s.ignLeft -= dt; if (s.ignLeft <= 0) s.ign = "idle"; }
       if (s.fireQueued) {
         s.fireQueued = false;
         const tgt = target;
         let result;
-        if (c.turretMode !== "laser") result = "wrong_mode";
+        if (mode !== "laser") result = "wrong_mode";
         else if (s.cooldown > 0) result = "cooldown";
         else if (s.pulses <= 0) result = "no_pulses";
         else if (!tgt) result = "no_target";
@@ -175,7 +198,7 @@ export function makeTurret() {
           else { x.resist = clamp(x.resist - L.damage_unprimed); x.stagger = clamp(x.stagger + L.stagger_add); result = "hit"; }
         }
         s.ignLeft = L.ignition_window_ms / 1000 + 0.6;
-        log("laser_fire", { result, id: target?.id ?? null, conf: Math.round(conf) });
+        log("laser_fire", { auto, result, id: target?.id ?? null, conf: Math.round(conf) });
       }
 
       // player coupling: wolf-tone near the player, or a turned turret, drains stasis
@@ -186,12 +209,12 @@ export function makeTurret() {
       const threatNear = world.entities.some((e) => e.disposition === "HOSTILE" && e.distance_m < 30);
       fx = {
         status: s.status, down_reason: s.downReason ?? null, deploy_left: s.deployLeft, deploy_total: T.deploy_s, back_m: Math.round(s.back * 10) / 10,
-        decoy: !!mod.decoy && deployed, mode: c.turretMode, tone_hz: c.toneHz, tone_on: toneOn, module: c.turretModule, module_label: mod.label,
+        decoy: !!mod.decoy && deployed, mode: c.turretMode, eff_mode: mode, auto, auto_reason: autoWhy, tone_hz: hz, tone_lock: toneLock, lock_band_hz: band?.hz ?? null, tone_on: toneOn, module: c.turretModule, module_label: mod.label,
         battery, temp, heading: R.turret_heading.value, tilt: R.turret_tilt.value, confidence: conf, ignition: s.ign,
         link: R.turret_link.value, pulses: s.pulses, cooldown: s.cooldown, peltier: s.peltier, heat_factor: heatF,
         target_id: s.targetId, cone_deg: cone, range_m: range, stage: s.pStage, pool: s.pool, shutdown_held: s.shutdownHeld,
         shutdown_need: TP.shutdown_hold_s, player_drain: playerDrain, dampen: !!c.dampen, cue_scale: c.dampen ? PL.dampen_cue_factor : 1,
-        ent: s.ent, warn: (s.status === "down" || s.status === "turned") && threatNear,
+        ent: s.ent, lock_rules: T.tone_lock, warn: (s.status === "down" || s.status === "turned") && threatNear,
       };
       s.fx = fx;
       return { fx, events: ev };

@@ -577,6 +577,16 @@
         "range_mult": 1,
         "decoy": true
       }
+    },
+    "auto": {
+      "switch_m": 10,
+      "min_conf": 55,
+      "sweep_hz_per_s": 700,
+      "min_heat_factor": 0.35
+    },
+    "tone_lock": {
+      "show_from": 0.15,
+      "lock_at": 0.85
     }
   }
 }

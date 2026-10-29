@@ -32,8 +32,25 @@ export const TurretScene = ({ frame }) => {
       )}
       {t.tone_on && <polygon points={`${origin[0]},${origin[1]} ${l1x},${l1y} ${r1x},${r1y}`} className="ts-cone" data-testid="turret-acoustic-cone" />}
       {laser && tgt && <line x1={origin[0]} y1={origin[1]} x2={tx} y2={ty} className={`ts-laser ign-${t.ignition}`} data-testid="turret-laser-line" />}
+      <ToneLock t={t} x={tx} y={ty} show={!!tgt} />
       {t.status === "turned" && <circle cx={origin[0]} cy={origin[1] - 20} r="30" className="ts-turned" />}
     </svg>
+  );
+};
+
+// Tone Lock Assist: ring on the target fills as the Wolf-Tone nears its resonance band, solid when locked
+const ToneLock = ({ t, x, y, show }) => {
+  const TL = t.lock_rules;
+  if (!show || t.status !== "active" || t.eff_mode !== "acoustic" || t.lock_band_hz == null || t.tone_lock < TL.show_from) return null;
+  const locked = t.tone_lock >= TL.lock_at;
+  const C = 2 * Math.PI * 22;
+  const off = t.tone_hz - t.lock_band_hz;
+  return (
+    <g transform={`translate(${x}, ${y - 34})`} className={`ts-lock ${locked ? "locked" : ""}`} data-testid="tone-lock-ring" data-locked={locked} data-lock={t.tone_lock.toFixed(2)}>
+      <circle r="22" className="tl-track" />
+      <circle r="22" className="tl-fill" strokeDasharray={C} strokeDashoffset={C * (1 - t.tone_lock)} />
+      <text y="36" textAnchor="middle" data-testid="tone-lock-label">{locked ? "TONE LOCK" : `${off > 0 ? "+" : ""}${off}Hz`}</text>
+    </g>
   );
 };
 
@@ -46,7 +63,7 @@ export const TurretStrip = ({ frame, onDeploy }) => {
   const tone = TONE[t.status];
   return (
     <div className={`turret-strip tone-${tone}`} data-testid="turret-strip" data-status={t.status}>
-      <span className="ts-tag" onClick={onDeploy} role="button" title="Loadout slot: click (or G) to preview, again to deploy" data-testid="turret-status-tag"><i /> G-13 {t.status.toUpperCase()}{t.status === "active" ? ` · ${t.mode === "acoustic" ? `${t.tone_hz}Hz` : "LASER"}` : ""}</span>
+      <span className="ts-tag" onClick={onDeploy} role="button" title="Loadout slot: click (or G) to preview, again to deploy" data-testid="turret-status-tag"><i /> G-13 {t.status.toUpperCase()}{t.status === "active" ? ` · ${t.auto ? "AUTO " : ""}${t.eff_mode === "acoustic" ? `${t.tone_hz}Hz` : "LASER"}` : ""}</span>
       <span className="ts-mini">
         <Bar v={t.battery} cls="bat" testId="turret-battery-bar" />
         <Bar v={((t.temp - 20) / 65) * 100} cls="heat" testId="turret-heat-bar" />
