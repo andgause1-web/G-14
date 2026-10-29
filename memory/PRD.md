@@ -97,3 +97,11 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - P1: Unreal kit structs for turret_* channels and possession/turret game state
 - P1: Real serial source (Web Serial / ESP32 bridge) publishing into the bus
 - P2: Saved presets/layouts; session record/replay; ESP32-CAM background; exportable HUD style settings for UMG
+
+## 2026-06 — G-13 AUTO mode + Tone Lock Assist (iterations 11–14, all passing)
+- AUTO is the default turret mode (manual LASER / WOLF-TONE remain; M cycles AUTO→LASER→WOLF-TONE).
+- AUTO fires laser pulses at long range (wears down resist, finishes primed/low-resist), switches to Wolf-Tone when target ≤ turret.auto.switch_m or laser can't fire (too_fast vs turret, cooldown, no pulses, heat, ignition fail); self-sweeps Hz to target resonance band. Logs auto_switch events.
+- Tone Lock ring on targeted entity (fills toward band, green "TONE LOCK" ≥ lock_at), only within Wolf-Tone reach.
+- Targeting: stable turret-relative threat score, min_dwell_s, retarget_margin, range_hold_mult hysteresis; closing speed measured against turret.
+- Replay deck-mark labels for all turret events.
+- New rules: turret.auto, turret.tone_lock, retarget_margin, min_dwell_s, range_hold_mult.

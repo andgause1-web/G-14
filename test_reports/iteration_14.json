@@ -1,0 +1,18 @@
+{
+  "summary": "Retest of the acoustic-edge thrash from iteration_13, now FIXED. Backend: 43/43 pytest pass (-n0). GET /api/rules returns turret.range_hold_mult 1.15, min_dwell_s 1.5 and retarget_margin 0.35. Lead-20 stress run (about 42s ACTIVE, pygmies at 21.6-26.5m): only 4 turret_target events (it13: 49 in 77s). Two of them were the planned auto laser shots on G-01, one each about 41s apart, and each switched back to a pygmy within 0.5s. P-01 was held for about 40s while other pygmies drifted to 25-26m. There were 2 acoustic_on and 1 acoustic_off (it13: 27 pairs). The Tone Lock ring was visible in 40 of 45 samples, all data-lock 1.00; the 5 hidden samples were in the first ~7s while AUTO swept to 1400Hz. Out of reach: (a) Contacts at 95-112m (turret deployed at the start, player 100m ahead): ring hidden in 24 of 24 samples. (b) Contacts at 40-55m (deployed at lead 15, then the player stepped forward): ring hidden in 16 of 16 samples, no target, and band null. (c) In laser mode with G-01 at 34.2m, band was null. Regression OK: the default is AUTO and auto laser fires (auto:true, hit x2). auto_switch reasons seen were range, cooldown and no_target. M cycles AUTO -> LASER -> 528Hz -> AUTO. Manual F logs laser_fire auto:false (no_target in the far run). No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_turret_rules.py", "/app/backend/tests/analyze_turret_session.py", "/app/backend/tests/analyze_turret_frames.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Optional: pressing G twice within about 300ms registers as one deploy command, because the second turretCmd increment is applied before the sim tick runs. Real users rarely do this; queueing the commands would fix it.",
+    "Optional (carried over from iteration_13): AUTO acoustic still falls back to the laser-range target when nothing is in acoustic reach. Band and ring are correctly null, so this is cosmetic.",
+    "Not verified this run: the manual WOLF-TONE cone ([data-testid=turret-acoustic-cone]). It had count 0 in the far run, where there were no targets in range. That is likely expected; iteration_13 had already confirmed the cone shows with contacts in range."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created and deleted sessions TEST_it14_lead20, TEST_it14_lead20b, TEST_it14_far and TEST_it14_stepfwd. Rules unchanged.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Same flow as in iteration_13. Wait at least 1.5s between the two G presses (preview, then deploy), or the second press is dropped. Lead 20 = 4 step-closer clicks before deploy. Analyse with analyze_turret_session.py NAME [--delete] and analyze_turret_frames.py NAME [from to]."
+}
