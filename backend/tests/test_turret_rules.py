@@ -51,3 +51,30 @@ class TestTurretRules:
         r2 = requests.put(f"{BASE_URL}/api/rules", json={"rules": original}, timeout=20)
         assert r2.status_code == 200
         assert r2.json()["rules"]["turret"]["deploy_s"] == 3
+
+
+# Turret AUTO mode + Tone Lock Assist rules blocks
+class TestTurretAutoToneLock:
+    def test_auto_block(self, original):
+        A = original["turret"]["auto"]
+        assert A == {"switch_m": 10, "min_conf": 55, "sweep_hz_per_s": 700, "min_heat_factor": 0.35}
+
+    def test_tone_lock_block(self, original):
+        TL = original["turret"]["tone_lock"]
+        assert TL["show_from"] == 0.15
+        assert TL["lock_at"] == 0.85
+        assert TL["show_from"] < TL["lock_at"]
+
+    def test_put_roundtrip_auto(self, original):
+        mod = copy.deepcopy(original)
+        mod["turret"]["auto"]["switch_m"] = 12
+        mod["turret"]["tone_lock"]["lock_at"] = 0.9
+        r = requests.put(f"{BASE_URL}/api/rules", json={"rules": mod}, timeout=20)
+        assert r.status_code == 200
+        g = requests.get(f"{BASE_URL}/api/rules", timeout=20).json()["rules"]
+        assert g["turret"]["auto"]["switch_m"] == 12
+        assert g["turret"]["tone_lock"]["lock_at"] == 0.9
+        r2 = requests.put(f"{BASE_URL}/api/rules", json={"rules": original}, timeout=20)
+        assert r2.status_code == 200
+        assert r2.json()["rules"]["turret"]["auto"]["switch_m"] == 10
+        assert r2.json()["rules"]["turret"]["tone_lock"]["lock_at"] == 0.85

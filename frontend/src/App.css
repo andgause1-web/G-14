@@ -678,7 +678,7 @@
 .ts-lock circle { fill: none; transform: rotate(-90deg); }
 .ts-lock .tl-track { stroke: rgba(126, 243, 255, 0.15); stroke-width: 1.5; }
 .ts-lock .tl-fill { stroke: rgba(126, 243, 255, 0.75); stroke-width: 2; transition: stroke-dashoffset 300ms ease-out, stroke 300ms ease-out; }
-.ts-lock text { fill: rgba(207, 239, 255, 0.7); font-size: 8px; letter-spacing: 0.18em; }
+.ts-lock text { fill: rgba(207, 239, 255, 0.9); font-size: 10.5px; letter-spacing: 0.16em; paint-order: stroke; stroke: rgba(2, 6, 10, 0.85); stroke-width: 3px; }
 .ts-lock.locked .tl-fill { stroke: #00ff9d; filter: drop-shadow(0 0 5px #00ff9d); }
 .ts-lock.locked text { fill: #00ff9d; }
 .ts-turned { fill: none; stroke: var(--red); stroke-width: 2; animation: alert-flash 0.6s steps(2) infinite; }

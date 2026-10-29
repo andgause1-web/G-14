@@ -587,6 +587,7 @@
     "tone_lock": {
       "show_from": 0.15,
       "lock_at": 0.85
-    }
+    },
+    "retarget_margin": 0.35
   }
 }

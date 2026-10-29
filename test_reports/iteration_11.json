@@ -1,0 +1,36 @@
+{
+  "summary": "Tested G-13 turret AUTO mode and Tone Lock Assist end to end. Backend: turret.auto {switch_m:10,min_conf:55,sweep_hz_per_s:700,min_heat_factor:0.35} and turret.tone_lock {show_from:0.15,lock_at:0.85} are in GET /api/rules, and the PUT round-trip plus restore works. 3 new tests added; 39/39 pass when run serially (-n0). Frontend: AUTO is the default (turret-mode-auto-button active). G/G goes preview -> deploying -> active. The status tag reads 'G-13 ACTIVE · AUTO <hz>Hz'. Deployed at lead 20 (targets 20-32m away), AUTO fired the laser on its own: recorded laser_fire auto:true (results ignition_fail / hit, and kill on a second pulse once P-01 resist dropped below 0.35; P-01 resist went 1 -> 0.7 -> 0.18). auto_switch was logged with reasons range, ignition and cooldown. In AUTO the acoustic cone appears without needing Hold tone, and the tone self-sweeps (948 -> 1356 -> 1400 for pygmies). The Tone Lock ring appears with a -Hz offset label (e.g. -44Hz at 0.72) and shows 'TONE LOCK' with green #00ff9d stroke at >=0.85. Deployed at lead 0, AUTO switches straight to acoustic with reason 'close' and never fires the laser. Manual WOLF-TONE slider: 1400 -> lock 1.00 TONE LOCK, 1300 -> 0.38 '-100Hz', 1100 -> hidden. Manual LASER: no ring, no auto-fire, F fires (auto:false, hit). M cycles AUTO -> LASER -> WOLF-TONE -> AUTO. Hold tone off removes the cone in manual acoustic. Regression OK: recall, hold-T shutdown (DOWN at 2.5s held), modules WIDE/LONG/DECOY (cone and range change), dampen (cue_scale 0.4), record -> sessions -> replay of turret state, visor page unaffected, no console errors. Main problem found: targets get re-picked every 0.5-1s, which makes the AUTO tone hunt between bands.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "lib/turret.js targeting", "issue": "No target hysteresis. turret_target changes every ~0.5-1s (P-01 -> P-04 -> P-02 -> W-01 -> ... more than 60 retargets in 45s of a recording) because the rank is e.score, which jitters (pygmies move by sine). AUTO sweeps toward each new target's band at 700Hz/s, so the tone hunts between 1400 and 180/528 and rarely holds a lock on mixed groups. The Tone Lock ring flickers on and off as the target alternates between a pygmy (locked) and G-01 (lock 0), in both AUTO and manual WOLF-TONE.", "selector": "[data-testid=tone-lock-ring]", "priority": "HIGH"},
+      {"component": "lib/turret.js AUTO acoustic target", "issue": "When the laser is unavailable (cooldown), the acoustic target is still chosen from all contacts within laser range (40m) instead of acoustic range (25m * module). Deployed at lead 20, AUTO targeted G-01 at 32m (out of Wolf-Tone reach) and swept the tone to 528 while the pygmies at 20-24m were in the cone, so they were not hurt and tone_on sometimes dropped to false.", "selector": "turret fx target_id", "priority": "MEDIUM"},
+      {"component": "lib/turret.js too_fast", "issue": "too_fast / abort_speed uses target.approach_mps, which is measured against the player, not the turret. When the player steps closer after deploying, the entity-to-turret distance stays about the same, but approach_mps reads 22 m/s, so AUTO reports too_fast and suppresses the laser by mistake. The score and targeting also use player-relative distance.", "selector": "fx.auto_reason", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Replay timeline marks", "issue": "EVENT_LABEL in lib/gameEvents.js has no entries for turret events (laser_fire, auto_switch, acoustic_on/off, turret_*). The deck-mark titles for those events are undefined.", "affected_selectors": [".deck-mark"]}
+    ],
+    "design_issues": [
+      {"screen": "Hallway Tone Lock ring", "issues": ["tone-lock-label is 8px at 0.7 alpha over a busy corridor image; the -Hz/TONE LOCK text is hard to read. Suggest 10-11px with a dark halo."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_turret_rules.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Add target stickiness/hysteresis to turret targeting: keep the current target unless a new one beats it by a margin or the current one is lost or killed, so the AUTO sweep and Tone Lock ring are stable.",
+    "In AUTO when effective mode is acoustic, pick the target from contacts inside acoustic range/cone (range_m * mod.range_mult) so the sweep tunes to something the tone can hit.",
+    "Compute approach speed relative to the turret (change of s.back + e.distance_m) for the too_fast/abort_speed checks.",
+    "Add EVENT_LABEL entries for turret events so replay marks have titles.",
+    "Optional: raise tone-lock-label font size/contrast."
+  ],
+  "critical_code_review_comments": [
+    "turret.js: in AUTO with no target (autoWhy no_target), mode is still 'acoustic'. toneOn can turn on for any alive entity in the cone, including NEUTRAL gnomes, which drains player stasis when the player is near and spends battery/heat with nothing targeted. Consider keeping the tone off when there is no target in AUTO.",
+    "turret.js: an auto_switch event is logged on the first active frame, and again on every laser <-> acoustic flip during cooldown cycles. That is fine, but flips are frequent when the target thrashes.",
+    "The ring/label CSS transition is 300ms. At ~1.5fps in headless, the locked ring can still read cyan for one frame; not a bug."
+  ],
+  "updated_files": ["/app/backend/tests/test_turret_rules.py"],
+  "success_rate": {"backend": "100%", "frontend": "85%"},
+  "seed_data_creation": "Created and deleted sessions TEST_auto_turret / TEST_auto_close / TEST_auto_far. Rules restored to their original values.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest with: cd /app/backend && pytest tests -n0 (pytest.ini adds xdist). Entities sit at lead + offset (clamped at 3m), so their distance to the turret stays roughly constant after deploy. To get targets 20-32m from the turret, set interval 20, press step-closer x4 (lead 20) and then deploy; for the 'close' reason, step x5 (lead 0) and then deploy. Detect open drawers with '[data-testid=hallway-panel].open' / '[data-testid=data-feed-panel].open'; the feed drawer covers record-stop-button. The toneHz slider: focus '[data-testid=slider-toneHz] [role=slider]', Home = 60, PageUp = +10. Read ring attributes in one page.evaluate call to avoid render races. Turret events can be checked by recording, stopping, then GET /api/sessions/{id}/jsonl (lines with k=='e'). Headless sim runs at ~0.15x, so the 3s deploy takes ~20s real."
+}

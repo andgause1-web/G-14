@@ -93,13 +93,42 @@ export function makeTurret() {
       // laser mode favours contacts it can finish (PRIMED or low resist); otherwise the HUD threat score
       const finishable = (e) => (s.ent[e.id]?.stagger ?? 0) >= 1 || (s.ent[e.id]?.resist ?? 1) < T.laser.finish_resist_below;
       const auto = c.turretMode === "auto";
+      const A = T.acoustic;
+      const L = T.laser;
+      const AU = T.auto;
+      const heatF = clamp(1 - (temp - H.throttle_from_c) / (H.max_c - H.throttle_from_c));
+      // closing speed measured against the planted turret, not the moving player
+      const prevTD = s.prevTD ?? {};
+      s.prevTD = {};
+      s.tv = {};
+      if (deployed) world.entities.forEach((e) => { const d = geo(e).d; s.prevTD[e.id] = d; s.tv[e.id] = dt > 0 && prevTD[e.id] != null ? Math.max(0, (prevTD[e.id] - d) / dt) : 0; });
       const laserPref = c.turretMode === "laser" || (auto && s.cooldown <= 0 && s.pulses > 0);
-      const rank = (e) => (laserPref && finishable(e) ? 1000 : 0) + e.score;
-      let target = null;
-      if (s.status === "active") {
-        target = alive.filter((e) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d <= T.laser.range_m * mod.range_mult)
-          .sort((a, b) => rank(b) - rank(a))[0] ?? null;
-      }
+      // HUD threat score re-based on distance to the turret
+      const rank = (e) => (laserPref && finishable(e) ? 1000 : 0) + (e.score * Math.max(1, e.distance_m)) / Math.max(1, geo(e).d);
+      // hysteresis: keep the current target unless a rival out-ranks it by retarget_margin
+      const pick = (maxD) => {
+        const pool = alive.filter((e) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d > 0 && geo(e).d <= maxD).sort((a, b) => rank(b) - rank(a));
+        const cur = pool.find((e) => e.id === s.targetId);
+        return cur && pool[0] && rank(pool[0]) < rank(cur) * (1 + T.retarget_margin) ? cur : pool[0] ?? null;
+      };
+      let target = s.status === "active" ? pick(L.range_m * mod.range_mult) : null;
+
+      // AUTO: laser at long range while it can fire, Wolf-Tone once contacts close in or the laser is unavailable
+      let mode = c.turretMode;
+      let autoWhy = null;
+      if (auto) {
+        if (!target) autoWhy = "no_target";
+        else if (geo(target).d <= AU.switch_m) autoWhy = "close";
+        else if (s.tv[target.id] > L.max_target_mps) autoWhy = "too_fast";
+        else if (s.pulses <= 0) autoWhy = "no_pulses";
+        else if (heatF < AU.min_heat_factor) autoWhy = "heat";
+        else if (s.ign === "failed") autoWhy = "ignition";
+        else if (s.cooldown > 0) autoWhy = "cooldown";
+        mode = target && !autoWhy ? "laser" : "acoustic";
+        // Wolf-Tone can only reach acoustic range: re-pick inside it
+        if (mode === "acoustic" && target && geo(target).d > range) target = pick(range) ?? target;
+        if (s.status === "active" && mode !== s.effMode) { log("auto_switch", { to: mode, reason: autoWhy ?? "range" }); s.effMode = mode; }
+      } else s.effMode = mode;
       if ((target?.id ?? null) !== s.targetId) { s.targetId = target?.id ?? null; if (target) log("turret_target", { id: target.id, type: target.type }); }
       const stage = s.pStage;
       s.jit = stage >= 1 ? (Math.random() - 0.5) * TP.jitter_deg * (stage / 2) : 0;
@@ -112,25 +141,6 @@ export function makeTurret() {
       s.tilt = target ? deg(Math.atan2(T.tilt_target_m - 0.4, geo(target).d)) : 0;
       s.conf = target ? clamp(T.confidence.base - T.confidence.per_m * geo(target).d - T.confidence.jitter_penalty * Math.abs(s.jit) / 2 - T.confidence.aim_error_penalty * Math.abs(err) + (Math.random() - 0.5) * T.confidence.noise, 0, 100) : 0;
       const conf = R.turret_confidence.value;
-      const heatF = clamp(1 - (temp - H.throttle_from_c) / (H.max_c - H.throttle_from_c));
-      const A = T.acoustic;
-      const L = T.laser;
-
-      // AUTO: laser at long range while it can fire, Wolf-Tone once contacts close in or the laser is unavailable
-      const AU = T.auto;
-      let mode = c.turretMode;
-      let autoWhy = null;
-      if (auto) {
-        if (!target) autoWhy = "no_target";
-        else if (geo(target).d <= AU.switch_m) autoWhy = "close";
-        else if ((target.approach_mps ?? 0) > L.max_target_mps) autoWhy = "too_fast";
-        else if (s.pulses <= 0) autoWhy = "no_pulses";
-        else if (heatF < AU.min_heat_factor) autoWhy = "heat";
-        else if (s.ign === "failed") autoWhy = "ignition";
-        else if (s.cooldown > 0) autoWhy = "cooldown";
-        mode = target && !autoWhy ? "laser" : "acoustic";
-        if (s.status === "active" && mode !== s.effMode) { log("auto_switch", { to: mode, reason: autoWhy ?? "range" }); s.effMode = mode; }
-      } else s.effMode = mode;
       const band = target ? T.resonance[target.type] : null;
       if (auto && band) s.autoHz += Math.sign(band.hz - s.autoHz) * Math.min(Math.abs(band.hz - s.autoHz), AU.sweep_hz_per_s * dt);
       const hz = Math.round(auto ? s.autoHz : c.toneHz);
@@ -184,7 +194,7 @@ export function makeTurret() {
         else if (s.cooldown > 0) result = "cooldown";
         else if (s.pulses <= 0) result = "no_pulses";
         else if (!tgt) result = "no_target";
-        else if ((tgt.approach_mps ?? 0) > L.max_target_mps) { result = "abort_speed"; s.ign = "aborted"; }
+        else if ((s.tv[tgt.id] ?? 0) > L.max_target_mps) { result = "abort_speed"; s.ign = "aborted"; }
         else {
           s.pulses -= 1;
           s.cooldown = L.cooldown_s;
