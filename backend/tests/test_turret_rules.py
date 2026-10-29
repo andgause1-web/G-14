@@ -78,3 +78,18 @@ class TestTurretAutoToneLock:
         assert r2.status_code == 200
         assert r2.json()["rules"]["turret"]["auto"]["switch_m"] == 10
         assert r2.json()["rules"]["turret"]["tone_lock"]["lock_at"] == 0.85
+
+    # iteration 12: target hysteresis margin
+    def test_retarget_margin(self, original):
+        m = original["turret"]["retarget_margin"]
+        assert isinstance(m, (int, float)) and m == 0.35
+
+    def test_put_roundtrip_retarget_margin(self, original):
+        mod = copy.deepcopy(original)
+        mod["turret"]["retarget_margin"] = 0.5
+        r = requests.put(f"{BASE_URL}/api/rules", json={"rules": mod}, timeout=20)
+        assert r.status_code == 200
+        assert requests.get(f"{BASE_URL}/api/rules", timeout=20).json()["rules"]["turret"]["retarget_margin"] == 0.5
+        r2 = requests.put(f"{BASE_URL}/api/rules", json={"rules": original}, timeout=20)
+        assert r2.status_code == 200
+        assert r2.json()["rules"]["turret"]["retarget_margin"] == 0.35

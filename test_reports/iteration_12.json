@@ -1,0 +1,28 @@
+{
+  "summary": "Retest of the iteration_11 fixes. Backend: 41/41 pytest pass (-n0), including 2 new tests for turret.retarget_margin (GET value 0.35, PUT round-trip then restore). Frontend: 3 recorded sessions were analysed from /api/sessions/{id}/jsonl. FIXED: (3) too_fast now uses turret-relative speed. While the player stepped 20m closer after deploying, player-relative approach_mps reached 21-39 m/s, yet auto_reason never became too_fast; every frame showed cooldown or null, and too_fast is checked before cooldown. FIXED: (4) every replay deck-mark has a title, e.g. 'LASER AUTO hit P-03', 'AUTO → LASER (range)', 'WOLF-TONE ON 738Hz', 'G-13 TARGET P-03', 'PELTIER ON/OFF'. FIXED: (5) tone-lock-label is 10.5px with a 3px dark stroke halo. Regression OK: AUTO is the default. Auto laser fires (auto:true, hit). auto_switch was logged with reasons range, cooldown and close (lead 0). M cycles AUTO -> LASER -> WOLF-TONE -> AUTO. Manual LASER + F fires (auto:false). Manual WOLF-TONE shows the cone at 528Hz. No page errors. NOT FIXED: (1) the target still thrashes: 54 turret_target events in 64s of sim time (lead 20) and 19 in 16s (lead 0). The Tone Lock ring was hidden in about 40% of 2s samples, and acoustic_on/off toggled 30 times in 64s. PARTIAL: (2) the acoustic re-pick falls back to the out-of-reach laser target when nothing is inside 25m, so G-01 at 34.5m was targeted 6 times and the tone swept to 528.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "lib/turret.js rank()/pick() hysteresis", "issue": "Target still changes every ~0.5-1.3s, cycling P-01 -> P-04 -> P-02/P-03 -> P-01, with G-01 or W-01 cutting in. RCA: rank uses e.score, and corridor.js:277 multiplies e.score by (1 + clamp(v / approach_bonus_mps)), where v is the player-relative approach speed. Pygmy approach_mps swings between 0 and 7 m/s (recorded), so a pygmy's rank swings by up to 2x. That is far more than retarget_margin 0.35 (1.35x), so the hysteresis rarely holds. Effect: the heading keeps slewing, contacts drop out of the 30-degree cone, the tone flips on and off, the ring hides and shows again, and the G-01/W-01 cut-ins pull the AUTO tone off 1400Hz (to 1050-1190Hz).", "selector": "[data-testid=tone-lock-ring], fx.target_id", "priority": "HIGH"},
+      {"component": "lib/turret.js line 129 AUTO acoustic re-pick", "issue": "`target = pick(range) ?? target` falls back to the laser-range target when no contact is within 25m. With the turret 2.5m behind the player, pygmies sat at 25-26m (right at the edge) and G-01 was at 34.5m, so G-01 became the target and the AUTO tone swept to 528. After the player stepped forward (turret 22.5m back, everything out of acoustic reach), the ring showed '1.00 TONE LOCK' on G-01 while tone_on was false and the cone was hidden. A lock indicator that shows while nothing can be hit is misleading.", "selector": "[data-testid=tone-lock-ring]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_turret_rules.py", "/app/backend/tests/analyze_turret_session.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Make the targeting rank stable. Options: (a) rank by threat weight / turret distance (or use the turret-relative s.tv for the approach bonus) instead of the jittery player-relative e.score; (b) smooth rank with an EMA; (c) add a minimum dwell time (e.g. 2-3s) before a retarget unless the current target is lost or killed. Then verify that turret_target fires fewer than ~1 time per 10s on a static mixed group.",
+    "In AUTO acoustic, when pick(range) is null, either keep the target but hide the Tone Lock ring (or don't sweep), or set target null so the tone does not tune to an unreachable contact. Consider a small range hysteresis (e.g. +1-2m) so contacts at the 25m edge do not drop out of range."
+  ],
+  "critical_code_review_comments": [
+    "turret.js:107 rank multiplies e.score by distance_m / geo.d to re-base it, but e.score still carries the player-relative approach bonus. That is the root cause of the remaining thrash.",
+    "turret.js:112 hysteresis only applies within the current pool. Because acoustic range is a hard 25m cutoff, contacts hovering at 25.0-25.5m enter and leave the pool every frame (no range hysteresis).",
+    "turret.js:105 the laserPref finishable +1000 bonus flips when the cooldown ends, so the target can switch right at the cooldown boundary. That is acceptable, but worth knowing."
+  ],
+  "updated_files": ["/app/backend/tests/test_turret_rules.py", "/app/backend/tests/analyze_turret_session.py"],
+  "success_rate": {"backend": "100%", "frontend": "70%"},
+  "seed_data_creation": "Created and deleted sessions TEST_it12_mixed, TEST_it12_lead20 and TEST_it12_close. Rules restored (retarget_margin 0.35).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest with: cd /app/backend && REACT_APP_BACKEND_URL=<url> pytest tests -n0. step-closer-button sits inside a closed drawer, so click it via page.evaluate(el.click()) and wait about 4.5s per step (STEP_MS 3500). If you deploy while still walking, back_m is non-zero. After recording, run `python /app/backend/tests/analyze_turret_session.py <NAME> [--delete]`. k=='w' lines hold world.turretFx (eff_mode, auto_reason, target_id, tone_on, back_m) and world.entities (approach_mps, score). Sim time is about 1x real time now. Key metric: count of turret_target events per sim second after turret_active."
+}

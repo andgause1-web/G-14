@@ -103,13 +103,14 @@ export function makeTurret() {
       s.tv = {};
       if (deployed) world.entities.forEach((e) => { const d = geo(e).d; s.prevTD[e.id] = d; s.tv[e.id] = dt > 0 && prevTD[e.id] != null ? Math.max(0, (prevTD[e.id] - d) / dt) : 0; });
       const laserPref = c.turretMode === "laser" || (auto && s.cooldown <= 0 && s.pulses > 0);
-      // HUD threat score re-based on distance to the turret
-      const rank = (e) => (laserPref && finishable(e) ? 1000 : 0) + (e.score * Math.max(1, e.distance_m)) / Math.max(1, geo(e).d);
+      // stable turret score: threat weight / distance to the turret (no jittery player-relative speed bonus)
+      const w = (e) => (e.disposition === "HOSTILE" ? e.threat : e.threat * rules.threat.non_hostile_weight);
+      const rank = (e) => (laserPref && finishable(e) ? 1000 : 0) + (w(e) * 100) / Math.max(1, geo(e).d);
       // hysteresis: keep the current target unless a rival out-ranks it by retarget_margin
       const pick = (maxD) => {
         const pool = alive.filter((e) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d > 0 && geo(e).d <= maxD).sort((a, b) => rank(b) - rank(a));
         const cur = pool.find((e) => e.id === s.targetId);
-        return cur && pool[0] && rank(pool[0]) < rank(cur) * (1 + T.retarget_margin) ? cur : pool[0] ?? null;
+        return cur && (s.dwell < T.min_dwell_s || rank(pool[0]) < rank(cur) * (1 + T.retarget_margin)) ? cur : pool[0] ?? null;
       };
       let target = s.status === "active" ? pick(L.range_m * mod.range_mult) : null;
 
@@ -129,7 +130,8 @@ export function makeTurret() {
         if (mode === "acoustic" && target && geo(target).d > range) target = pick(range) ?? target;
         if (s.status === "active" && mode !== s.effMode) { log("auto_switch", { to: mode, reason: autoWhy ?? "range" }); s.effMode = mode; }
       } else s.effMode = mode;
-      if ((target?.id ?? null) !== s.targetId) { s.targetId = target?.id ?? null; if (target) log("turret_target", { id: target.id, type: target.type }); }
+      s.dwell = (s.dwell ?? 0) + dt;
+      if ((target?.id ?? null) !== s.targetId) { s.targetId = target?.id ?? null; s.dwell = 0; if (target) log("turret_target", { id: target.id, type: target.type }); }
       const stage = s.pStage;
       s.jit = stage >= 1 ? (Math.random() - 0.5) * TP.jitter_deg * (stage / 2) : 0;
       let aim = target ? geo(target).b : 0;
@@ -141,7 +143,8 @@ export function makeTurret() {
       s.tilt = target ? deg(Math.atan2(T.tilt_target_m - 0.4, geo(target).d)) : 0;
       s.conf = target ? clamp(T.confidence.base - T.confidence.per_m * geo(target).d - T.confidence.jitter_penalty * Math.abs(s.jit) / 2 - T.confidence.aim_error_penalty * Math.abs(err) + (Math.random() - 0.5) * T.confidence.noise, 0, 100) : 0;
       const conf = R.turret_confidence.value;
-      const band = target ? T.resonance[target.type] : null;
+      // tone lock only means something while the target is inside Wolf-Tone reach
+      const band = target && geo(target).d <= range ? T.resonance[target.type] : null;
       if (auto && band) s.autoHz += Math.sign(band.hz - s.autoHz) * Math.min(Math.abs(band.hz - s.autoHz), AU.sweep_hz_per_s * dt);
       const hz = Math.round(auto ? s.autoHz : c.toneHz);
       const toneLock = band ? clamp(1 - Math.abs(hz - band.hz) / A.band_width_hz) : 0;
