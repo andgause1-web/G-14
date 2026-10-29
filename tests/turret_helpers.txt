@@ -1,0 +1,1 @@
+helper notes: read frame via data-feed-json (open-data-feed-button), panel via open-sensor-panel-button

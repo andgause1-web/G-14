@@ -71,7 +71,7 @@ export const HallwayPanel = memo(({ open, onClose, controls, setControls, playin
             <button key={k} className={`preset-btn ${controls.turretModule === k ? "active-cross" : ""}`} onClick={() => set("turretModule", k)} data-testid={`turret-module-${k}-button`}>{l}</button>
           ))}
         </div>
-        <div className="hint-text">Drops at your feet: G once for the ghost preview, again to deploy (3 s). Wolf-tone staggers, stalls, repels and lowers resist; the laser only finishes PRIMED or low-resist contacts and aborts above 10 m/s. Hold T to shut down a possessed turret. M switches mode.</div>
+        <div className="hint-text">Drops at your feet: G once for the ghost preview, again to deploy (3 s). Deploy after a step finishes — mid-step it lands where you were. Wolf-tone staggers, stalls, repels and lowers resist; the laser only finishes PRIMED or low-resist contacts and aborts above 10 m/s. Hold T to shut down a possessed turret. M switches mode.</div>
 
         <div className="group-title">ZONE ROOM <span className="jp">区域</span></div>
         <div className="zone-grid">

@@ -12,7 +12,7 @@ export const TurretScene = ({ frame }) => {
   const W = window.innerWidth;
   const H = window.innerHeight;
   const imu = frame.imu;
-  const origin = t.back_m < 1.5 ? [W * 0.62, H * 0.9] : [W * 0.56, H * 1.04];
+  const origin = Math.abs(t.back_m) < 1.5 ? [W * 0.62, H * 0.9] : [W * 0.56, H * 1.04];
   const tgt = frame.scan.entities.find((e) => e.id === t.target_id);
   const d = tgt ? tgt.distance_m : Math.min(t.range_m, 20);
   const lane = tgt ? tgt.lane_m : 0;
@@ -27,7 +27,7 @@ export const TurretScene = ({ frame }) => {
         <g transform={`translate(${W * 0.62}, ${H * 0.86})`} className="ts-ghost" data-testid="turret-ghost-preview">
           <rect x="-26" y="-34" width="52" height="26" rx="3" /><rect x="-10" y="-8" width="20" height="14" />
           <ellipse cx="0" cy="12" rx="34" ry="9" /><path d="M-34,14 L-48,26 M34,14 L48,26 M-14,20 L-20,32 M14,20 L20,32" />
-          {t.status === "deploying" && <circle r="46" className="ts-deploy" strokeDasharray={289} strokeDashoffset={289 * (t.deploy_left / 3)} data-testid="turret-deploy-ring" />}
+          {t.status === "deploying" && <circle r="46" className="ts-deploy" strokeDasharray={289} strokeDashoffset={289 * (t.deploy_left / t.deploy_total)} data-testid="turret-deploy-ring" />}
         </g>
       )}
       {t.tone_on && <polygon points={`${origin[0]},${origin[1]} ${l1x},${l1y} ${r1x},${r1y}`} className="ts-cone" data-testid="turret-acoustic-cone" />}

@@ -84,8 +84,16 @@ User is building the G-14 Aether Wave helmet (electrical/mechanical progressing)
 - Rules page: 3 preset cards (one click), ACTIVE / CUSTOM detection, differing values highlighted, disabled while the editor has unsaved changes
 - Self-tested (curl + screenshot): brutal -> breach 5 s/5.5 s hold/success 30, back to standard
 
+## G-13 Wolf-Trap Sentry Turret (hallway) — added 2026-06
+- rules.json `turret` block (required section): deploy, arc, tracking/confidence, battery (4S LiPo), heat + Peltier (duty limit, cooldown, low-battery cutoff), pulse budget, acoustic (cone, range, band width, stagger/resist/push rates), laser (ignition window/success, 10 m/s snowball abort, cooldown, finish threshold), per-entity resonance (golem 528 stall, pygmy/gnome 1400 repel, wraith 180 weak x3 with decoy, boss), egregore tone damp, player coupling + Dampen, turret possession (range, drain, Space resist, T hold shutdown), G-12 modules (wide/long/decoy)
+- lib/turret.js: stowed → preview (ghost) → deploying (3 s) → active / turned / down; drops at player position; auto-target by HUD score (laser favours PRIMED/low-resist); publishes 7 turret_* bus channels and reads them back resolved (SIM fallback, overrides); effects fed to corridor sim (stall, push, stagger, PRIMED, kill) and possession (egregore pull damp, player drain); events logged; state recorded/replayed/branched/ejected
+- UI: TurretScene (ghost preview, deploy ring, acoustic cone, laser line), status strip near loadout (click = deploy) with gaze-hover card (render image), TURRET DOWN/TURNED edge warning only with hostiles <30 m, PRIMED/STALL tags; panel group + keys G/F/M/T
+- Unreal README: turret sim → hardware mapping (INA226, NTC/Peltier, servos+BMI270, TSL1401CL + FPGA ignition gate, pogo-pin I²C module ID, ESP32 bridge)
+- Tested: iteration 11 (36/36 backend, frontend flows pass); fixed after: cone/drain only with a contact in cone, laser prioritises finishable contacts, deploy ring uses rules deploy_s, signed turret offset, larger warning text; recording contents + visor isolation verified
+
 ## Backlog
 - P1: Spinal rig bar (MAX30102 HR/SpO2/HRV) + bio telemetry panels
 - P1: Live ESP32/Teensy feed in place of simulated data
+- P1: Unreal kit structs for turret_* channels and possession/turret game state
 - P1: Real serial source (Web Serial / ESP32 bridge) publishing into the bus
 - P2: Saved presets/layouts; session record/replay; ESP32-CAM background; exportable HUD style settings for UMG

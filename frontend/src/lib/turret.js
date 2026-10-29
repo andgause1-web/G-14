@@ -43,7 +43,8 @@ export function makeTurret() {
         if (s.deployLeft <= 0) { s.status = "active"; log("turret_active"); }
       }
       const deployed = s.status === "active" || s.status === "turned";
-      s.back = Math.max(0, progress - s.dropAt);
+      // signed: negative when you are pushed back past the drop point
+      s.back = progress - s.dropAt;
 
       // resources: battery, heat, Peltier (shuts off first on low battery)
       const H = T.heat;
@@ -62,9 +63,9 @@ export function makeTurret() {
       // turret possession: egregores in range drain its pool, same stage table as the player
       const P = rules.possession;
       const TP = T.possession;
-      const eg = world.entities.filter((e) => P.egregore.types.includes(e.type) && !s.ent[e.id]?.killed && s.back + e.distance_m <= TP.range_m);
+      const eg = world.entities.filter((e) => P.egregore.types.includes(e.type) && !s.ent[e.id]?.killed && Math.abs(s.back + e.distance_m) <= TP.range_m);
       if (deployed) {
-        const drain = eg.reduce((m, e) => m + TP.drain_per_s * e.threat * clamp(1 - (s.back + e.distance_m) / TP.range_m), 0);
+        const drain = eg.reduce((m, e) => m + TP.drain_per_s * e.threat * clamp(1 - Math.abs(s.back + e.distance_m) / TP.range_m), 0);
         s.pool = clamp(s.pool - drain * dt + (c.resist ? TP.resist_gain_per_s * dt : 0) + (eg.length ? 0 : 2 * dt), 0, 100);
         const st = stageOf(s.pool, P.stages);
         if (st !== s.pStage) { log("turret_possession_stage", { from: s.pStage, to: st }); s.pStage = st; }
@@ -89,10 +90,13 @@ export function makeTurret() {
       const range = T.acoustic.range_m * mod.range_mult;
       const geo = (e) => ({ d: s.back + e.distance_m, b: deg(Math.atan2(e.lane_m ?? 0, s.back + e.distance_m)) });
       const alive = world.entities.filter((e) => !s.ent[e.id]?.killed && (e.type !== "gnome" || e.disposition === "HOSTILE"));
+      // laser mode favours contacts it can finish (PRIMED or low resist); otherwise the HUD threat score
+      const finishable = (e) => (s.ent[e.id]?.stagger ?? 0) >= 1 || (s.ent[e.id]?.resist ?? 1) < T.laser.finish_resist_below;
+      const rank = (e) => (c.turretMode === "laser" && finishable(e) ? 1000 : 0) + e.score;
       let target = null;
       if (s.status === "active") {
         target = alive.filter((e) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d <= T.laser.range_m * mod.range_mult)
-          .sort((a, b) => b.score - a.score)[0] ?? null;
+          .sort((a, b) => rank(b) - rank(a))[0] ?? null;
       }
       if ((target?.id ?? null) !== s.targetId) { s.targetId = target?.id ?? null; if (target) log("turret_target", { id: target.id, type: target.type }); }
       const stage = s.pStage;
@@ -117,16 +121,15 @@ export function makeTurret() {
       const E = (id) => (s.ent[id] ||= { stagger: 0, resist: 1, stall: 0, push: 0, damp: 0, killed: false });
 
       // acoustic Wolf-Tone: cone beam, damage scales with closeness to each entity's resonance band
-      const toneOn = s.status === "active" && c.turretMode === "acoustic" && c.turretArmed && heatF > 0 && battery > 0;
+      const inCone = alive.filter((e) => { const g = geo(e); return g.d > 0 && g.d <= range && Math.abs(g.b - s.heading) <= cone / 2; });
+      const toneOn = s.status === "active" && c.turretMode === "acoustic" && c.turretArmed && heatF > 0 && battery > 0 && inCone.length > 0;
       if (toneOn !== s.toneOn) { s.toneOn = toneOn; log(toneOn ? "acoustic_on" : "acoustic_off", { hz: c.toneHz }); }
       const A = T.acoustic;
       const hit = new Set();
       if (toneOn) {
         s.battery -= B.acoustic_per_s * dt;
         s.temp += H.acoustic_per_s * dt;
-        alive.forEach((e) => {
-          const g = geo(e);
-          if (g.d > range || Math.abs(g.b - s.heading) > cone / 2) return;
+        inCone.forEach((e) => {
           const band = T.resonance[e.type];
           let close = band ? clamp(1 - Math.abs(c.toneHz - band.hz) / A.band_width_hz) * band.strength * heatF : 0;
           if (band?.decoy_mult && mod.decoy) close *= band.decoy_mult;
@@ -177,12 +180,12 @@ export function makeTurret() {
 
       // player coupling: wolf-tone near the player, or a turned turret, drains stasis
       const PL = T.player;
-      const near = s.back <= PL.range_m;
+      const near = Math.abs(s.back) <= PL.range_m;
       const damp = c.dampen ? PL.dampen_factor : 1;
       const playerDrain = ((toneOn && near ? PL.stasis_drain_per_s : 0) + (s.status === "turned" ? TP.turned_player_drain_per_s : 0)) * damp;
       const threatNear = world.entities.some((e) => e.disposition === "HOSTILE" && e.distance_m < 30);
       fx = {
-        status: s.status, down_reason: s.downReason ?? null, deploy_left: s.deployLeft, back_m: Math.round(s.back * 10) / 10,
+        status: s.status, down_reason: s.downReason ?? null, deploy_left: s.deployLeft, deploy_total: T.deploy_s, back_m: Math.round(s.back * 10) / 10,
         decoy: !!mod.decoy && deployed, mode: c.turretMode, tone_hz: c.toneHz, tone_on: toneOn, module: c.turretModule, module_label: mod.label,
         battery, temp, heading: R.turret_heading.value, tilt: R.turret_tilt.value, confidence: conf, ignition: s.ign,
         link: R.turret_link.value, pulses: s.pulses, cooldown: s.cooldown, peltier: s.peltier, heat_factor: heatF,
