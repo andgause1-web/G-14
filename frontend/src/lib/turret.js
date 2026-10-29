@@ -108,9 +108,11 @@ export function makeTurret() {
       const rank = (e) => (laserPref && finishable(e) ? 1000 : 0) + (w(e) * 100) / Math.max(1, geo(e).d);
       // hysteresis: keep the current target unless a rival out-ranks it by retarget_margin
       const pick = (maxD) => {
-        const pool = alive.filter((e) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d > 0 && geo(e).d <= maxD).sort((a, b) => rank(b) - rank(a));
-        const cur = pool.find((e) => e.id === s.targetId);
-        return cur && (s.dwell < T.min_dwell_s || rank(pool[0]) < rank(cur) * (1 + T.retarget_margin)) ? cur : pool[0] ?? null;
+        const ok = (e, m) => e.disposition !== "NEUTRAL" && Math.abs(geo(e).b) <= T.arc_deg / 2 && geo(e).d > 0 && geo(e).d <= m;
+        const pool = alive.filter((e) => ok(e, maxD)).sort((a, b) => rank(b) - rank(a));
+        // range hysteresis: a held target may drift range_hold_mult past the edge before it is dropped
+        const cur = alive.find((e) => e.id === s.targetId && ok(e, maxD * T.range_hold_mult));
+        return cur && (!pool[0] || s.dwell < T.min_dwell_s || rank(pool[0]) < rank(cur) * (1 + T.retarget_margin)) ? cur : pool[0] ?? null;
       };
       let target = s.status === "active" ? pick(L.range_m * mod.range_mult) : null;
 
@@ -144,7 +146,8 @@ export function makeTurret() {
       s.conf = target ? clamp(T.confidence.base - T.confidence.per_m * geo(target).d - T.confidence.jitter_penalty * Math.abs(s.jit) / 2 - T.confidence.aim_error_penalty * Math.abs(err) + (Math.random() - 0.5) * T.confidence.noise, 0, 100) : 0;
       const conf = R.turret_confidence.value;
       // tone lock only means something while the target is inside Wolf-Tone reach
-      const band = target && geo(target).d <= range ? T.resonance[target.type] : null;
+      const inReach = !!target && geo(target).d <= range * T.range_hold_mult;
+      const band = inReach ? T.resonance[target.type] : null;
       if (auto && band) s.autoHz += Math.sign(band.hz - s.autoHz) * Math.min(Math.abs(band.hz - s.autoHz), AU.sweep_hz_per_s * dt);
       const hz = Math.round(auto ? s.autoHz : c.toneHz);
       const toneLock = band ? clamp(1 - Math.abs(hz - band.hz) / A.band_width_hz) : 0;
@@ -160,7 +163,7 @@ export function makeTurret() {
 
       // acoustic Wolf-Tone: cone beam, damage scales with closeness to each entity's resonance band
       const inCone = alive.filter((e) => { const g = geo(e); return g.d > 0 && g.d <= range && Math.abs(g.b - s.heading) <= cone / 2; });
-      const toneOn = s.status === "active" && mode === "acoustic" && (auto || c.turretArmed) && heatF > 0 && battery > 0 && inCone.length > 0;
+      const toneOn = s.status === "active" && mode === "acoustic" && (auto || c.turretArmed) && heatF > 0 && battery > 0 && (inCone.length > 0 || inReach);
       if (toneOn !== s.toneOn) { s.toneOn = toneOn; log(toneOn ? "acoustic_on" : "acoustic_off", { hz }); }
       const hit = new Set();
       if (toneOn) {

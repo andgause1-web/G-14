@@ -1,0 +1,27 @@
+{
+  "summary": "Retest of the 2 open issues from iteration_12. Backend: 43/43 pytest pass (-n0), including 2 new tests: min_dwell_s is 1.5, and a PUT round-trip then restore. Frontend: 3 sessions were recorded and analysed. FIXED (2): after the player stepped forward (turret 20-23m back, all contacts 25-35m away), the Tone Lock ring showed in 0 of 15 samples and AUTO stayed at 1400Hz with no sweep. lock_band_hz is null whenever the target is beyond 25m, including the G-01 fallback target at 34.7m. MOSTLY FIXED (1): the rank-based thrash is gone. At lead 0 (close) there was 1 turret_target event in 35s, and the ring was solid TONE LOCK on W-01 at 180Hz in 14 of 15 samples. In the step-forward run there were 5 targets in 40s, and P-01 was held for 9s. AUTO tone settles on 1400Hz for the pygmy group. STILL THRASHING at lead 20: the pygmies hover right at the 25m acoustic edge (24.8-27m). That run had 49 turret_target events in 77s (about 0.64/s, some gaps only 0.45-0.5s, below min_dwell 1.5s) and 27 acoustic_on/off pairs, and the ring showed in only 11 of 45 samples. Regression OK: AUTO is the default. Auto laser fires (auto:true, hit/ignition_fail). auto_switch reasons seen: range, cooldown, ignition. M cycles AUTO -> LASER -> 528Hz -> AUTO. Manual F logs laser_fire auto:false (result cooldown). Manual WOLF-TONE shows the cone at 528Hz. Replay: 30 deck-marks, all titled. GET /api/rules returns min_dwell_s 1.5 and retarget_margin 0.35. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "lib/turret.js pick() at the acoustic range edge", "issue": "min_dwell_s is skipped when the current target leaves the pool. pick() keeps `cur` only if it is still in the filtered pool (d <= maxD), so if the current pygmy drifts or is pushed past 25.0m, pool[0] (another pygmy at 24.9m) is taken at once and dwell resets. The loop: pygmy resonance effect 'repel' (push_per_s 4) pushes the targeted pygmy past 25m. Then inCone empties, so acoustic_off fires and the ring hides. Push decays (0.6/s), the pygmy comes back, and the tone and ring return on a different pygmy. Recorded: P-02 -> P-03 -> P-01 at 57159/57643/58143 ms, with distances of 25.0-25.6m in those frames.", "selector": "[data-testid=tone-lock-ring], fx.target_id", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_turret_rules.py", "/app/backend/tests/analyze_turret_session.py", "/app/backend/tests/analyze_turret_frames.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Add range hysteresis in pick(): keep `cur` if it is within maxD + ~1.5-2m and inside the arc (and keep it for min_dwell_s even if it briefly leaves the pool), instead of requiring cur to be inside the strict pool.",
+    "Optionally use the same small margin for the Wolf-Tone inCone/range test, or stop pushing repel targets past range (e.g. reduce push near the range edge). This stops the 0.5s acoustic_on/off flicker on pygmy groups at about 25m.",
+    "Minor: in AUTO acoustic, when nothing is inside 25m, the target falls back to the laser pick (e.g. G-01 at 34.7m), so the heading slews to an unreachable golem. The ring and band are correctly hidden, so this is cosmetic. Consider keeping the previous acoustic target or using null."
+  ],
+  "critical_code_review_comments": [
+    "turret.js pick(): `cur && (s.dwell < min_dwell || ...)` only applies while cur is in the pool. A hard maxD cutoff skips both dwell and margin, which is the remaining root cause.",
+    "turret.js: `target = pick(range) ?? target` re-picks inside acoustic range on every frame where the laser-range target is >25m, so laser-pool and acoustic-pool picks can alternate and reset dwell."
+  ],
+  "updated_files": ["/app/backend/tests/test_turret_rules.py", "/app/backend/tests/analyze_turret_frames.py"],
+  "success_rate": {"backend": "100%", "frontend": "85%"},
+  "seed_data_creation": "Created and deleted sessions TEST_it13_lead20, TEST_it13_stepfwd and TEST_it13_close. Rules unchanged (min_dwell_s 1.5, retarget_margin 0.35).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest: cd /app/backend && REACT_APP_BACKEND_URL=<url> pytest tests -n0. UI flow: open /hallway, click record-button, fill record-name-input, click record-start-button. Then click step-closer-button via JS el.click() x4 (lead 20) or x5 (lead 0), waiting 4.5s each. Click the page, press g twice, and wait about 15s for ACTIVE. Afterwards run analyze_turret_session.py NAME and analyze_turret_frames.py NAME [from_ms to_ms]; the frames script prints target/mode/tone/reason changes with turret-relative distances. Ring state: [data-testid=tone-lock-ring] data-lock. The lead-20 scenario is the stress case for edge-of-range thrash."
+}

@@ -93,3 +93,18 @@ class TestTurretAutoToneLock:
         r2 = requests.put(f"{BASE_URL}/api/rules", json={"rules": original}, timeout=20)
         assert r2.status_code == 200
         assert r2.json()["rules"]["turret"]["retarget_margin"] == 0.35
+
+
+    # iteration 13: minimum target dwell
+    def test_min_dwell(self, original):
+        assert original["turret"]["min_dwell_s"] == 1.5
+
+    def test_put_roundtrip_min_dwell(self, original):
+        mod = copy.deepcopy(original)
+        mod["turret"]["min_dwell_s"] = 2.5
+        r = requests.put(f"{BASE_URL}/api/rules", json={"rules": mod}, timeout=20)
+        assert r.status_code == 200
+        assert requests.get(f"{BASE_URL}/api/rules", timeout=20).json()["rules"]["turret"]["min_dwell_s"] == 2.5
+        r2 = requests.put(f"{BASE_URL}/api/rules", json={"rules": original}, timeout=20)
+        assert r2.status_code == 200
+        assert r2.json()["rules"]["turret"]["min_dwell_s"] == 1.5

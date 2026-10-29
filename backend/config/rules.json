@@ -589,6 +589,7 @@
       "lock_at": 0.85
     },
     "retarget_margin": 0.35,
-    "min_dwell_s": 1.5
+    "min_dwell_s": 1.5,
+    "range_hold_mult": 1.15
   }
 }
